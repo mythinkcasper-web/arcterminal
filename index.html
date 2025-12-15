@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARC Terminal v11 (Ref Fix)</title>
+    <title>ARC v12 (Lot Matrix)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -20,10 +20,10 @@
         #reader { width: 100%; height: 100%; }
         #reader video { object-fit: cover !important; width: 100% !important; height: 100% !important; }
 
-        /* MODAL KATMANI (EN ÜSTTE) */
+        /* MODAL KATMANI */
         .modal-layer { z-index: 200 !important; }
 
-        /* VİZÖR VE EFEKTLER */
+        /* VİZÖR */
         .scan-overlay {
             position: absolute; inset: 0; pointer-events: none; z-index: 60; background: rgba(0, 0, 0, 0.6);
             -webkit-mask: radial-gradient(transparent 140px, black 141px); mask: radial-gradient(transparent 140px, black 141px);
@@ -55,6 +55,9 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); opacity: 0; transition: all 0.2s; pointer-events: none;
         }
         #toast.show { display: flex; opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        
+        /* LOT ETİKETİ */
+        .lot-tag { background: #f59e0b; color: #000; font-weight: bold; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
     </style>
 </head>
 <body class="flex flex-col h-full bg-slate-900">
@@ -62,9 +65,9 @@
     <!-- HEADER -->
     <header class="bg-slate-900 border-b border-slate-700 p-4 flex justify-between items-center shadow-lg z-20">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-lg"><i class="fas fa-qrcode"></i></div>
+            <div class="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-lg"><i class="fas fa-layer-group"></i></div>
             <div>
-                <h1 class="font-bold text-slate-100 text-sm tracking-wide">ARC v11 REF-FIX</h1>
+                <h1 class="font-bold text-slate-100 text-sm tracking-wide">ARC v12 LOT-MATRIX</h1>
                 <div class="text-[10px] text-green-400 font-bold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> ONLINE</div>
             </div>
         </div>
@@ -91,8 +94,8 @@
             <!-- ÖZET -->
             <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
                 <h3 class="text-xs font-bold text-slate-400 mb-3 uppercase flex justify-between">
-                    <span>Depo Durumu</span>
-                    <span id="total-badge" class="bg-blue-900 text-blue-300 px-2 rounded text-[10px]">0 Çeşit</span>
+                    <span>Parti (Lot) Durumu</span>
+                    <span id="total-badge" class="bg-blue-900 text-blue-300 px-2 rounded text-[10px]">0 Kayıt</span>
                 </h3>
                 <div id="summary-list" class="space-y-3"></div>
             </div>
@@ -100,7 +103,7 @@
 
         <!-- STOKLAR -->
         <div id="page-stocks" class="hidden p-4 space-y-4">
-            <input type="text" id="search-input" onkeyup="renderStocks()" placeholder="GTIN, REF veya İsim Ara..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm outline-none text-white focus:border-blue-500">
+            <input type="text" id="search-input" onkeyup="renderStocks()" placeholder="GTIN, REF, LOT veya İsim Ara..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm outline-none text-white focus:border-blue-500">
             <div id="stock-list" class="grid grid-cols-1 gap-3 pb-20"></div>
         </div>
     </main>
@@ -131,7 +134,6 @@
                 <div class="text-lg font-bold text-white tracking-widest">TARANIYOR</div>
             </div>
             
-            <!-- Hızlı Mod -->
             <div class="flex items-center gap-2 bg-black/60 backdrop-blur px-3 py-1 rounded-full border border-white/20">
                 <span class="text-[10px] font-bold text-white">SERİ MOD</span>
                 <input type="checkbox" id="rapid-toggle" class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
@@ -166,11 +168,11 @@
                 <div class="flex-1">
                     <label class="text-[10px] text-slate-400 font-bold">ÜRÜN ADI</label>
                     <input type="text" id="modal-name" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm outline-none focus:border-blue-500">
-                    <div class="text-[10px] text-blue-400 mt-1 font-bold" id="modal-total-stock">STOK: 0</div>
+                    <div class="text-[10px] text-blue-400 mt-1 font-bold" id="modal-total-stock">BU PARTİDE STOK: 0</div>
                 </div>
             </div>
 
-            <!-- Detaylar (REF DÜZELTİLDİ) -->
+            <!-- Detaylar (LOT AYIRIMI) -->
             <div class="bg-slate-900 p-3 rounded-lg border border-slate-700 mb-4 grid grid-cols-2 gap-2">
                 <div>
                     <label class="text-[10px] text-slate-500 font-bold">GTIN</label>
@@ -180,13 +182,17 @@
                     <label class="text-[10px] text-slate-500 font-bold">REF NO</label>
                     <div class="text-xs font-mono text-yellow-400 truncate font-bold" id="modal-ref">---</div>
                 </div>
-                <div>
-                    <label class="text-[10px] text-slate-500 font-bold">LOT</label>
-                    <div class="text-xs font-mono text-white truncate" id="modal-lot">---</div>
+                <div class="col-span-2 bg-slate-800 p-1 rounded border border-yellow-600/30">
+                    <label class="text-[10px] text-yellow-500 font-bold">LOT (PARTİ NO)</label>
+                    <div class="text-sm font-mono text-white font-bold" id="modal-lot">---</div>
                 </div>
                 <div>
                     <label class="text-[10px] text-slate-500 font-bold">SN</label>
                     <div class="text-xs font-mono text-emerald-400 truncate" id="modal-sn">---</div>
+                </div>
+                 <div>
+                    <label class="text-[10px] text-slate-500 font-bold">SKT</label>
+                    <div class="text-xs font-mono text-white truncate" id="modal-exp">---</div>
                 </div>
                 <div class="col-span-2">
                      <label class="text-[10px] text-slate-500 font-bold">RAF / KONUM</label>
@@ -214,9 +220,9 @@
     </div>
 
     <script>
-        // --- ARC v11 ÇEKİRDEĞİ ---
-        const DB_KEY = 'arc_v11_db';
-        let db = { products: {} };
+        // --- ARC v12 ÇEKİRDEĞİ ---
+        const DB_KEY = 'arc_v12_lot_db';
+        let db = { products: {} }; // Yapı: { "UNIQUE_ID": { ... } } -> UNIQUE_ID = REF + LOT
         let html5QrCode;
         let scanMode = 'IN';
         let parsedData = null;
@@ -236,11 +242,10 @@
             } catch(e) { alert("Hafıza dolu! Lütfen 'Ayarlar'dan sıfırlama yapın."); }
         }
 
-        // --- GS1 PARSER (REF DÜZELTİLDİ) ---
+        // --- GS1 PARSER ---
         function parseBarcode(text) {
-            let res = { raw: text, gtin: "", lot: "", ref: "", sn: "", exp: "", id: text };
+            let res = { raw: text, gtin: "", lot: "NOLOT", ref: "", sn: "", exp: "", uniqueId: "" };
             
-            // Boşlukları normalize et (birden fazla boşluğu teke indir)
             text = text.replace(/\s+/g, ' ').trim();
 
             if(text.includes(' ')) {
@@ -248,22 +253,26 @@
                 for(let i=0; i<parts.length; i++) {
                     let key = parts[i];
                     let val = parts[i+1];
-                    
                     if(!val) continue;
 
                     if(key === '01') res.gtin = val;
-                    if(key === '10') res.lot = val;
+                    if(key === '10') res.lot = val; // LOT ÇOK ÖNEMLİ
                     if(key === '17') res.exp = val;
                     if(key === '21') res.sn = val;
-                    if(key === '240') res.ref = val; // REF Yakalama Kodu
+                    if(key === '240') res.ref = val;
                 }
             } else {
                 res.sn = text; 
             }
 
-            // ID Önceliği
-            if(res.gtin) res.id = res.gtin;
-            else if(res.ref) res.id = res.ref;
+            // *** KRİTİK DEĞİŞİKLİK: UNIQUE ID (BENZERSİZ KİMLİK) ***
+            // Ürünleri birbirinden ayırmak için ID artık sadece REF değil, REF + LOT kombinasyonudur.
+            // Örnek ID: "A3920_P110"
+            
+            let baseId = res.gtin || res.ref || "UNKNOWN";
+            if(res.ref) baseId = res.ref; // Ref varsa öncelikli kullan
+            
+            res.uniqueId = baseId + "_" + res.lot; // Lot ile birleştir
             
             return res;
         }
@@ -311,7 +320,6 @@
         // --- TARAMA MANTIĞI ---
         function onScan(decodedText) {
             try {
-                // Ses
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
                 const o = ctx.createOscillator(); const g = ctx.createGain();
                 o.connect(g); g.connect(ctx.destination);
@@ -319,7 +327,9 @@
                 o.start(); setTimeout(()=>o.stop(), 0.1);
 
                 parsedData = parseBarcode(decodedText);
-                const prod = db.products[parsedData.id];
+                
+                // BURADA ARTIK UNIQUE ID (REF + LOT) İLE ARIYORUZ
+                const prod = db.products[parsedData.uniqueId];
                 const isRapid = document.getElementById('rapid-toggle').checked;
 
                 // SERİ MOD
@@ -344,11 +354,19 @@
                 
                 if(prod && parsedData.sn) {
                     const exists = prod.logs.find(l => l.sn === parsedData.sn);
-                    if(scanMode === 'IN' && exists) { alert("BU ÜRÜN ZATEN OKUTULDU!\nSN: " + parsedData.sn); html5QrCode.resume(); return; }
-                    if(scanMode === 'OUT' && !exists) { alert("BU ÜRÜN STOKTA YOK!\nSN: " + parsedData.sn); html5QrCode.resume(); return; }
+                    if(scanMode === 'IN' && exists) { alert("BU ÜRÜN (BU LOTTA) ZATEN OKUTULDU!\nSN: " + parsedData.sn); html5QrCode.resume(); return; }
+                    if(scanMode === 'OUT' && !exists) { alert("BU ÜRÜN BU LOTTA YOK!\nSN: " + parsedData.sn); html5QrCode.resume(); return; }
                 }
 
-                openModal(parsedData, prod);
+                // Yeni ürün veya yeni lot ise -> Modal açılır
+                // İsim arama (Farklı lotta aynı ürün ismi varsa otomatik doldur)
+                let suggestedName = "";
+                if(!prod) {
+                    const similarProd = Object.values(db.products).find(p => p.ref === parsedData.ref);
+                    if(similarProd) suggestedName = similarProd.name;
+                }
+
+                openModal(parsedData, prod, suggestedName);
 
             } catch(e) {
                 alert("Okuma Hatası: " + e);
@@ -356,13 +374,13 @@
             }
         }
 
-        // --- MODAL & KAYIT ---
-        function openModal(data, prod) {
+        // --- MODAL ---
+        function openModal(data, prod, suggestedName) {
             document.getElementById('modal-gtin').innerText = data.gtin || "---";
             document.getElementById('modal-lot').innerText = data.lot || "---";
             document.getElementById('modal-sn').innerText = data.sn || "---";
-            // REF FIX: Ekrana yazdır ve varsa eski kayıttan çek
             document.getElementById('modal-ref').innerText = data.ref || (prod ? prod.ref : "---");
+            document.getElementById('modal-exp').innerText = data.exp || "---";
 
             const nameInp = document.getElementById('modal-name');
             const shelfInp = document.getElementById('modal-shelf');
@@ -372,12 +390,13 @@
             if(prod) {
                 nameInp.value = prod.name;
                 shelfInp.value = prod.shelf || "";
-                document.getElementById('modal-total-stock').innerText = "STOK: " + prod.totalQty;
+                document.getElementById('modal-total-stock').innerText = "BU PARTİ STOK: " + prod.totalQty;
                 if(prod.image) { img.src = prod.image; img.classList.remove('hidden'); noImg.classList.add('hidden'); }
                 else { img.classList.add('hidden'); noImg.classList.remove('hidden'); }
             } else {
-                nameInp.value = ""; shelfInp.value = "";
-                document.getElementById('modal-total-stock').innerText = "YENİ ÜRÜN";
+                nameInp.value = suggestedName || ""; // Eğer başka lotta varsa ismini getir
+                shelfInp.value = "";
+                document.getElementById('modal-total-stock').innerText = "YENİ PARTİ (LOT)";
                 img.classList.add('hidden'); noImg.classList.remove('hidden');
             }
 
@@ -394,16 +413,20 @@
             try {
                 const name = document.getElementById('modal-name').value || ("Ürün " + parsedData.id);
                 const shelf = document.getElementById('modal-shelf').value.toUpperCase();
-                const ref = document.getElementById('modal-ref').innerText; // Ref'i ekrandan al
+                const ref = document.getElementById('modal-ref').innerText;
                 const imgEl = document.getElementById('modal-img');
                 const imgSrc = (!imgEl.classList.contains('hidden')) ? imgEl.src : null;
 
-                if(!db.products[parsedData.id]) {
-                    db.products[parsedData.id] = { id: parsedData.id, name: name, shelf: shelf, ref: ref, image: imgSrc, totalQty: 0, logs: [] };
+                // Veritabanı anahtarı artık UNIQUE ID (REF+LOT)
+                if(!db.products[parsedData.uniqueId]) {
+                    db.products[parsedData.uniqueId] = { 
+                        id: parsedData.uniqueId, // Benzersiz ID
+                        name: name, shelf: shelf, ref: ref, lot: parsedData.lot, image: imgSrc, totalQty: 0, logs: [] 
+                    };
                 }
-                let prod = db.products[parsedData.id];
+                let prod = db.products[parsedData.uniqueId];
                 prod.name = name; prod.shelf = shelf; 
-                if(ref !== "---") prod.ref = ref; // Ref güncelle
+                if(ref !== "---") prod.ref = ref;
                 if(imgSrc) prod.image = imgSrc;
 
                 const entry = { sn: parsedData.sn, lot: parsedData.lot, ref: prod.ref, date: new Date().toLocaleString(), type: scanMode };
@@ -440,7 +463,7 @@
         function updateUI() {
             const list = document.getElementById('summary-list');
             const arr = Object.values(db.products);
-            document.getElementById('total-badge').innerText = arr.length + " Çeşit";
+            document.getElementById('total-badge').innerText = arr.length + " Parti";
             
             if(arr.length === 0) { list.innerHTML = '<div class="text-center text-xs text-slate-500">Veri Yok</div>'; return; }
 
@@ -452,7 +475,10 @@
                         </div>
                         <div class="overflow-hidden">
                             <div class="text-xs font-bold text-white truncate w-32">${p.name}</div>
-                            <div class="text-[10px] text-blue-400 font-mono">REF: ${p.ref || "-"} | RAF: ${p.shelf || "-"}</div>
+                            <div class="flex gap-2 mt-1">
+                                <span class="text-[10px] bg-blue-900 text-blue-200 px-1 rounded">R: ${p.ref}</span>
+                                <span class="text-[10px] bg-yellow-900 text-yellow-200 px-1 rounded">L: ${p.lot}</span>
+                            </div>
                         </div>
                     </div>
                     <div class="text-lg font-bold ${p.totalQty > 0 ? 'text-blue-400' : 'text-red-500'}">${p.totalQty}</div>
@@ -467,7 +493,7 @@
             const term = document.getElementById('search-input').value.toLowerCase();
             const arr = Object.values(db.products).filter(p => 
                 p.name.toLowerCase().includes(term) || 
-                p.id.includes(term) || 
+                p.lot.toLowerCase().includes(term) ||
                 (p.ref && p.ref.toLowerCase().includes(term))
             );
             
@@ -476,8 +502,10 @@
                     <div class="p-3 border-b border-slate-700 flex justify-between bg-slate-800 items-center">
                         <div>
                             <span class="font-bold text-sm text-white block">${p.name}</span>
-                            <span class="text-[10px] text-yellow-500 font-bold">REF: ${p.ref || "-"}</span>
-                            <span class="text-[10px] text-emerald-400 font-bold bg-emerald-900/30 px-1 rounded ml-1">RAF: ${p.shelf || "-"}</span>
+                            <div class="flex gap-2 mt-1">
+                                <span class="lot-tag">LOT: ${p.lot}</span>
+                                <span class="text-[10px] text-slate-400 font-bold self-center">REF: ${p.ref}</span>
+                            </div>
                         </div>
                         <span class="font-bold text-blue-400 text-lg">${p.totalQty}</span>
                     </div>
@@ -513,14 +541,14 @@
             const a = document.createElement('a'); a.href = d; a.download = 'ARC_Yedek.json'; a.click();
         }
         function exportExcel() {
-            let csv = "GTIN;URUN;REF;RAF;ISLEM;SN;LOT;TARIH\n";
-            Object.values(db.products).forEach(p => { p.logs.forEach(l => { csv += `${p.id};${p.name};${p.ref};${p.shelf};${l.type};${l.sn};${l.lot};${l.date}\n`; }); });
+            let csv = "GTIN;URUN;REF;LOT;RAF;ISLEM;SN;TARIH\n";
+            Object.values(db.products).forEach(p => { p.logs.forEach(l => { csv += `${p.id};${p.name};${p.ref};${p.lot};${p.shelf};${l.type};${l.sn};${l.date}\n`; }); });
             const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = 'Rapor.csv'; a.click();
         }
         function shareWhatsApp() {
              let msg = "ARC STOK RAPORU:\n";
-             Object.values(db.products).forEach(p => { msg += `${p.name} (Ref:${p.ref}): ${p.totalQty} Adet\n`; });
+             Object.values(db.products).forEach(p => { msg += `${p.name} (Lot:${p.lot}): ${p.totalQty} Adet\n`; });
              window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
         }
 
