@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARC Terminal v7 (Fix)</title>
+    <title>ARC Terminal v8 (Zoom + Fix)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -14,7 +14,7 @@
         body { background-color: #0f172a; color: #fff; height: 100vh; overflow: hidden; font-family: 'Inter', sans-serif; user-select: none; }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
 
-        /* KAMERA */
+        /* KAMERA VE VİZÖR */
         #scanner-container { position: fixed; inset: 0; z-index: 50; background: #000; display: none; }
         #reader { width: 100%; height: 100%; }
         #reader video { object-fit: cover !important; width: 100% !important; height: 100% !important; }
@@ -27,12 +27,25 @@
         .focus-box {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 260px; height: 260px; border: 2px solid rgba(255,255,255,0.3); border-radius: 20px; z-index: 70;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.5);
         }
         .laser-line {
             position: absolute; top: 50%; left: 5%; width: 90%; height: 2px;
             background: #ef4444; box-shadow: 0 0 15px #ef4444; animation: scan 2s infinite ease-in-out;
         }
         @keyframes scan { 0%, 100% { top: 10%; opacity: 0; } 50% { opacity: 1; } 100% { top: 90%; opacity: 0; } }
+
+        /* ZOOM SLIDER - ÖZEL TASARIM */
+        input[type=range] {
+            -webkit-appearance: none; width: 100%; background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 24px; width: 24px; border-radius: 50%;
+            background: #fff; cursor: pointer; margin-top: -10px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); border: 2px solid #3b82f6;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; cursor: pointer; background: rgba(255,255,255,0.3); border-radius: 2px;
+        }
 
         /* TOAST BİLDİRİM */
         #toast {
@@ -51,9 +64,9 @@
     <!-- HEADER -->
     <header class="bg-slate-900 border-b border-slate-700 p-4 flex justify-between items-center shadow-lg z-20">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-lg"><i class="fas fa-cubes"></i></div>
+            <div class="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-lg"><i class="fas fa-search-plus"></i></div>
             <div>
-                <h1 class="font-bold text-slate-100 text-sm tracking-wide">ARC v7 FIX</h1>
+                <h1 class="font-bold text-slate-100 text-sm tracking-wide">ARC v8 ZOOM</h1>
                 <div class="text-[10px] text-green-400 font-bold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> SYSTEM OK</div>
             </div>
         </div>
@@ -113,19 +126,34 @@
         </button>
     </nav>
 
-    <!-- KAMERA -->
+    <!-- KAMERA VE ZOOM ARAYÜZÜ -->
     <div id="scanner-container">
         <div id="reader"></div>
         <div class="scan-overlay"></div>
         <div id="focus-frame" class="focus-box">
             <div class="laser-line"></div>
         </div>
+        
+        <!-- ÜST BİLGİ -->
         <div class="absolute top-0 left-0 w-full p-4 flex justify-between z-[100]">
             <div class="bg-black/60 backdrop-blur px-3 py-1 rounded border border-white/20">
                 <div class="text-[10px] text-slate-300 font-bold" id="cam-mode">MOD</div>
                 <div class="text-lg font-bold text-white tracking-widest">TARANIYOR</div>
             </div>
-            <button onclick="stopScanner()" class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white"><i class="fas fa-times"></i></button>
+            <button onclick="stopScanner()" class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition"><i class="fas fa-times"></i></button>
+        </div>
+
+        <!-- ZOOM CONTROL (GERİ GELDİ) -->
+        <div class="absolute bottom-8 left-0 w-full px-8 z-[100]">
+            <div class="bg-black/50 backdrop-blur-md rounded-xl p-4 border border-white/10">
+                <div class="flex justify-between text-xs text-white/80 font-bold mb-2 font-mono">
+                    <span>1x</span>
+                    <span>ZOOM</span>
+                    <span>5x</span>
+                </div>
+                <input type="range" id="zoom-slider" min="1" max="5" step="0.1" value="1" oninput="applyZoom(this.value)">
+                <div class="text-center mt-2 text-[10px] text-white/50">Küçük kodlar için çubuğu kaydırın</div>
+            </div>
         </div>
     </div>
 
@@ -187,39 +215,33 @@
     <div id="toast"><i class="fas fa-check-circle text-4xl"></i><span>KAYDEDİLDİ</span></div>
 
     <script>
-        // --- ARC v7 ENGINE ---
-        const DB_KEY = 'arc_v7_db';
+        // --- ARC v8 ENGINE ---
+        const DB_KEY = 'arc_v8_db';
         let db = { products: {} };
         let html5QrCode;
         let scanMode = 'IN';
-        let parsedData = null; // Global parsed data
+        let parsedData = null;
 
-        // Başlangıç
         function init() {
             try {
                 const data = localStorage.getItem(DB_KEY);
                 if (data) db = JSON.parse(data);
                 updateDashboard();
-            } catch (e) {
-                alert("Veri okuma hatası: " + e);
-            }
+            } catch (e) { console.error(e); }
         }
 
-        // Veritabanı Kaydetme (Hata Korumalı)
         function saveDB() {
             try {
                 localStorage.setItem(DB_KEY, JSON.stringify(db));
                 updateDashboard();
             } catch (e) {
-                alert("HATA: Kayıt yapılamadı! Depolama alanı dolmuş olabilir. Lütfen gereksiz fotoğrafları silin.\n\nHata: " + e);
+                alert("HATA: Hafıza Dolu! Lütfen eski verileri silin.");
             }
         }
 
-        // --- GS1 PARSER (Düzeltilmiş) ---
+        // --- GS1 PARSER ---
         function parseBarcode(text) {
             let res = { raw: text, gtin: "", lot: "", ref: "", sn: "", exp: "", id: text };
-            
-            // Eğer senin verdiğin gibi boşluklu format ise
             if(text.includes(' ')) {
                 const parts = text.split(' ');
                 for(let i=0; i<parts.length; i++) {
@@ -229,23 +251,20 @@
                     else if(parts[i] === '240' && parts[i+1]) res.ref = parts[i+1];
                     else if(parts[i] === '21' && parts[i+1]) res.sn = parts[i+1];
                 }
-            } else {
-                // Boşluk yoksa basitçe raw olarak al, ID'yi raw yap
-                res.sn = text;
-            }
-
-            // ID Belirleme (Ürünleri birleştirmek için GTIN veya REF kullan)
+            } else { res.sn = text; }
             if(res.gtin) res.id = res.gtin;
             else if(res.ref) res.id = res.ref;
-            
             return res;
         }
 
-        // --- KAMERA ---
+        // --- KAMERA VE ZOOM ---
         function startScanner(mode) {
             scanMode = mode;
             document.getElementById('scanner-container').style.display = 'block';
             
+            // Slider'ı sıfırla
+            document.getElementById('zoom-slider').value = 1;
+
             const txt = document.getElementById('cam-mode');
             const laser = document.querySelector('.laser-line');
             if(mode === 'IN') {
@@ -257,7 +276,17 @@
             }
 
             html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: {width: 250, height: 250} }, onScan)
+            // HD Çözünürlük ve Format Desteği
+            const config = { 
+                fps: 25, 
+                qrbox: {width: 250, height: 250},
+                videoConstraints: {
+                    facingMode: "environment",
+                    width: { min: 1280, ideal: 1920, max: 2560 } // Yüksek çözünürlük zorla
+                }
+            };
+
+            html5QrCode.start({ facingMode: "environment" }, config, onScan)
             .catch(err => { alert("Kamera Hatası: " + err); stopScanner(); });
         }
 
@@ -270,22 +299,29 @@
             } else { document.getElementById('scanner-container').style.display = 'none'; }
         }
 
+        // *** ZOOM FONKSİYONU ***
+        function applyZoom(val) {
+            if(html5QrCode) {
+                try {
+                    html5QrCode.applyVideoConstraints({
+                        advanced: [{ zoom: parseFloat(val) }]
+                    });
+                } catch(e) { console.log("Zoom desteklenmiyor", e); }
+            }
+        }
+
         function onScan(decodedText) {
-            // Ses
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             const o = ctx.createOscillator(); const g = ctx.createGain();
             o.connect(g); g.connect(ctx.destination);
             o.type='square'; o.frequency.value=1200; g.gain.value=0.1;
             o.start(); setTimeout(()=>o.stop(), 0.1);
 
-            html5QrCode.pause(); // Durdur
+            html5QrCode.pause();
+            parsedData = parseBarcode(decodedText);
             
-            parsedData = parseBarcode(decodedText); // Veriyi Global değişkene ata
-            
-            // Ürün var mı?
             const prod = db.products[parsedData.id];
             
-            // Mükerrer Kontrol (Aynı SN var mı?)
             if(prod && parsedData.sn) {
                 const exists = prod.logs.find(l => l.sn === parsedData.sn);
                 if(scanMode === 'IN' && exists) {
@@ -303,7 +339,7 @@
             openModal(parsedData, prod);
         }
 
-        // --- MODAL ---
+        // --- MODAL & KAYIT ---
         function openModal(data, prod) {
             document.getElementById('modal-gtin').innerText = "GTIN: " + (data.gtin || "---");
             document.getElementById('modal-ref').innerText = data.ref || "---";
@@ -318,11 +354,8 @@
             if(prod) {
                 nameInp.value = prod.name;
                 document.getElementById('modal-total-stock').innerText = "TOPLAM STOK: " + prod.totalQty;
-                if(prod.image) {
-                    img.src = prod.image; img.classList.remove('hidden'); noImg.classList.add('hidden');
-                } else {
-                    img.classList.add('hidden'); noImg.classList.remove('hidden');
-                }
+                if(prod.image) { img.src = prod.image; img.classList.remove('hidden'); noImg.classList.add('hidden'); }
+                else { img.classList.add('hidden'); noImg.classList.remove('hidden'); }
             } else {
                 nameInp.value = "";
                 document.getElementById('modal-total-stock').innerText = "YENİ ÜRÜN";
@@ -335,7 +368,6 @@
             } else {
                 btn.innerText = "KAYDET (ÇIKIŞ)"; btn.className = "w-full py-4 bg-rose-600 hover:bg-rose-500 rounded-xl font-bold text-white shadow-lg text-lg tracking-wide mb-2";
             }
-
             document.getElementById('product-modal').classList.remove('hidden');
         }
 
@@ -344,7 +376,6 @@
             html5QrCode.resume();
         }
 
-        // Fotoğraf İşleme (Sıkıştırma)
         function handlePhoto(input) {
             if(input.files && input.files[0]) {
                 const reader = new FileReader();
@@ -354,15 +385,12 @@
                     imgObj.onload = function() {
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
-                        const maxW = 300; // Küçük boyut = Hızlı kayıt
+                        const maxW = 300;
                         const scale = maxW / imgObj.width;
                         canvas.width = maxW;
                         canvas.height = imgObj.height * scale;
                         ctx.drawImage(imgObj, 0, 0, canvas.width, canvas.height);
-                        
-                        const compressed = canvas.toDataURL('image/jpeg', 0.6); // %60 kalite
-                        
-                        document.getElementById('modal-img').src = compressed;
+                        document.getElementById('modal-img').src = canvas.toDataURL('image/jpeg', 0.6);
                         document.getElementById('modal-img').classList.remove('hidden');
                         document.getElementById('modal-no-img').classList.add('hidden');
                     }
@@ -371,60 +399,30 @@
             }
         }
 
-        // --- KAYIT İŞLEMİ (DEBUG EDİLDİ) ---
         function saveProduct() {
             try {
-                // 1. Verileri Al
-                if(!parsedData) throw "Barkod verisi kayıp!";
-                
+                if(!parsedData) throw "Veri hatası";
                 const name = document.getElementById('modal-name').value || ("Ürün " + parsedData.id);
                 const imgEl = document.getElementById('modal-img');
                 const imgSrc = (!imgEl.classList.contains('hidden')) ? imgEl.src : null;
 
-                // 2. DB Hazırla
                 if(!db.products[parsedData.id]) {
-                    db.products[parsedData.id] = {
-                        id: parsedData.id,
-                        name: name,
-                        image: imgSrc,
-                        totalQty: 0,
-                        logs: []
-                    };
+                    db.products[parsedData.id] = { id: parsedData.id, name: name, image: imgSrc, totalQty: 0, logs: [] };
                 }
                 let prod = db.products[parsedData.id];
-
-                // 3. Güncelle
                 if(name) prod.name = name;
                 if(imgSrc) prod.image = imgSrc;
 
-                const entry = {
-                    sn: parsedData.sn, lot: parsedData.lot, ref: parsedData.ref, 
-                    exp: document.getElementById('modal-exp').innerText,
-                    date: new Date().toLocaleString('tr-TR'),
-                    type: scanMode
-                };
+                const entry = { sn: parsedData.sn, lot: parsedData.lot, ref: parsedData.ref, exp: document.getElementById('modal-exp').innerText, date: new Date().toLocaleString('tr-TR'), type: scanMode };
 
-                if(scanMode === 'IN') {
-                    prod.logs.push(entry);
-                    prod.totalQty++;
-                } else {
-                    prod.logs.push(entry);
-                    prod.totalQty = Math.max(0, prod.totalQty - 1);
-                }
+                if(scanMode === 'IN') { prod.logs.push(entry); prod.totalQty++; } 
+                else { prod.logs.push(entry); prod.totalQty = Math.max(0, prod.totalQty - 1); }
 
-                // 4. Kaydet
                 saveDB();
-
-                // 5. Görsel Geri Bildirim (Toast)
                 showToast();
-
-                // 6. Kapat
                 document.getElementById('product-modal').classList.add('hidden');
                 stopScanner();
-
-            } catch(e) {
-                alert("Kayıt sırasında hata oluştu: " + e);
-            }
+            } catch(e) { alert("Kayıt hatası: " + e); }
         }
 
         function showToast() {
@@ -433,14 +431,11 @@
             setTimeout(() => t.classList.remove('show'), 1500);
         }
 
-        // --- UI ---
         function updateDashboard() {
             const list = document.getElementById('summary-list');
             const arr = Object.values(db.products);
-            
             document.getElementById('total-count-badge').innerText = arr.length + " Çeşit";
-
-            if(arr.length === 0) { list.innerHTML = '<div class="text-center text-xs text-slate-500">Henüz kayıt yok</div>'; return; }
+            if(arr.length === 0) { list.innerHTML = '<div class="text-center text-xs text-slate-500">Kayıt yok</div>'; return; }
 
             list.innerHTML = arr.map(p => `
                 <div class="bg-slate-900 p-3 rounded-lg border border-slate-700 flex justify-between items-center">
@@ -456,7 +451,6 @@
                     <div class="text-lg font-bold ${p.totalQty > 0 ? 'text-blue-400' : 'text-red-500'}">${p.totalQty}</div>
                 </div>
             `).join('');
-
             renderStocks();
         }
 
@@ -492,29 +486,21 @@
         }
 
         function clearAllData() {
-            if(confirm("Tüm veriler silinecek! Onaylıyor musun?")) {
-                localStorage.removeItem(DB_KEY);
-                db = { products: {} };
-                updateDashboard();
-            }
+            if(confirm("Tüm veriler silinecek!")) { localStorage.removeItem(DB_KEY); db = { products: {} }; updateDashboard(); }
         }
 
         function switchPage(page) {
             document.querySelectorAll('main > div').forEach(el => el.classList.add('hidden'));
             document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active', 'text-blue-500'));
-            
             if(page === 'home') { document.getElementById('page-home').classList.remove('hidden'); document.querySelectorAll('.nav-btn')[0].classList.add('active', 'text-blue-500'); }
             if(page === 'stocks') { document.getElementById('page-stocks').classList.remove('hidden'); document.querySelectorAll('.nav-btn')[1].classList.add('active', 'text-blue-500'); renderStocks(); }
         }
 
         function exportExcel() {
             let csv = "ID;URUN;ISLEM;SN;LOT;SKT;TARIH\n";
-            Object.values(db.products).forEach(p => {
-                p.logs.forEach(l => { csv += `${p.id};${p.name};${l.type};${l.sn};${l.lot};${l.exp};${l.date}\n`; });
-            });
+            Object.values(db.products).forEach(p => { p.logs.forEach(l => { csv += `${p.id};${p.name};${l.type};${l.sn};${l.lot};${l.exp};${l.date}\n`; }); });
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a'); a.href = url; a.download = 'Lojistik_Rapor.csv'; a.click();
+            const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'Lojistik_Rapor.csv'; a.click();
         }
 
         init();
