@@ -229,14 +229,14 @@
         </div>
     </div>
 
-    <script>
+      <script>
         // --- ARC v12 ÇEKİRDEĞİ ---
         const DB_KEY = 'arc_v12_lot_db';
         let db = { products: {} }; 
         let html5QrCode;
         let scanMode = 'IN';
         let parsedData = null;
-        let currentStockView = 'product-list'; // 'product-list' veya 'shelf-details'
+        let currentStockView = 'shelf-list'; // 'shelf-list' (Varsayılan) veya 'shelf-details'
         let currentShelfFilter = null; // showShelfDetails tarafından belirlenir
 
         function init() {
@@ -471,8 +471,9 @@
             
             if(liveArr.length === 0) { list.innerHTML = '<div class="text-center text-xs text-slate-500 pt-2">Aktif stokta ürün yok.</div>'; }
             else {
+                // Ana Sayfa Özeti: Lot/Ürün bazlı kalacak
                 list.innerHTML = liveArr.map(p => `
-                    <div class="bg-black p-3 rounded-xl border border-gray-800 flex justify-between items-center transition hover:border-blue-500" onclick="showShelfDetails('${p.shelf || "RAFSIZ"}')">
+                    <div class="bg-black p-3 rounded-xl border border-gray-800 flex justify-between items-center transition hover:border-blue-500" onclick="showShelfDetails('${p.shelf || "RAFSIZ"}', true)">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 bg-gray-900 rounded-md flex-none overflow-hidden border border-gray-700">
                                 ${p.image ? `<img src="${p.image}" class="w-full h-full object-cover">` : `<div class="flex items-center justify-center h-full text-slate-600"><i class="fas fa-barcode"></i></div>`}
@@ -494,42 +495,87 @@
             }
             
             if (document.getElementById('page-stocks').classList.contains('hidden') === false) {
-                 // Sadece Stoklar sekmesindeyken günceller
+                 // Stoklar sekmesindeyken güncel görünümü koru
                  if (currentStockView === 'shelf-details') {
-                     showShelfDetails(currentShelfFilter, false); // Aynı raf detayını tekrar yükle
+                     showShelfDetails(currentShelfFilter, false); 
                  } else {
-                     renderStocks();
+                     renderStocks(); // Raf Listesini çağırır
                  }
             }
         }
 
+        // --- YENİ TEMEL FONKSİYON: RAF LİSTESİ ---
         function renderStocks() {
-            currentStockView = 'product-list';
+            currentStockView = 'shelf-list';
             currentShelfFilter = null;
-            document.getElementById('stock-title').innerText = "Tüm Lotlar";
+            document.getElementById('stock-title').innerText = "Tüm Raflar (Stok Özet)";
             document.getElementById('back-to-list').classList.add('hidden');
             
             const grid = document.getElementById('stock-list'); if(!grid) return;
             const term = document.getElementById('search-input').value.toLowerCase();
-            const allProducts = Object.values(db.products);
-            
-            // Arama filtresi: tüm partiler dahil
-            const filteredProducts = allProducts.filter(p => 
-                p.name.toLowerCase().includes(term) || 
-                p.lot.toLowerCase().includes(term) ||
-                (p.ref && p.ref.toLowerCase().includes(term)) ||
-                (p.shelf && p.shelf.toLowerCase().includes(term))
-            ).sort((a,b) => b.totalQty - a.totalQty); // Çoktan aza sıralama
+            const allProducts = Object.values(db.products).filter(p => p.totalQty > 0); // Sadece stokta olanları listele
 
-            // ÜRÜN LİSTESİ (Lot bazlı)
-            grid.innerHTML = filteredProducts.map(p => generateProductCard(p)).join('');
+            // Raflara göre grupla ve toplam stok hesapla
+            const groupedByShelf = allProducts.reduce((acc, p) => {
+                const shelfKey = (p.shelf && p.shelf.trim() ? p.shelf.toUpperCase() : "RAFSIZ / TANIMSIZ");
+
+                // Arama filtresi: Raf adı veya raftaki ürün bilgileri
+                if (term === '' || shelfKey.toLowerCase().includes(term) ||
+                    p.name.toLowerCase().includes(term) || 
+                    p.lot.toLowerCase().includes(term) ||
+                    (p.ref && p.ref.toLowerCase().includes(term))) {
+                        
+                    if (!acc[shelfKey]) acc[shelfKey] = {
+                        totalQty: 0,
+                        productCount: new Set(),
+                        lotCount: 0,
+                        shelf: shelfKey
+                    };
+                    
+                    acc[shelfKey].totalQty += p.totalQty;
+                    acc[shelfKey].lotCount++;
+                    acc[shelfKey].productCount.add(p.ref); 
+                }
+                return acc;
+            }, {});
+
+            let shelfHTML = '';
+            // Raf adlarına göre A-Z sırala
+            const sortedShelves = Object.keys(groupedByShelf).sort();
+
+            if (sortedShelves.length === 0) {
+                 grid.innerHTML = `<div class="bg-gray-900 p-4 rounded-xl text-center text-slate-500">Hiçbir rafta ürün bulunamadı.</div>`;
+                 return;
+            }
+
+            // Raf Kartlarını oluştur
+            shelfHTML = sortedShelves.map(key => {
+                const s = groupedByShelf[key];
+                return `
+                    <div class="bg-[#1a1a1a] rounded-xl border border-gray-700 p-4 shadow-md transition hover:border-blue-500 cursor-pointer" onclick="showShelfDetails('${s.shelf}', true)">
+                        <div class="flex justify-between items-start">
+                            <h3 class="font-extrabold text-white text-xl flex items-center">
+                                <i class="fas fa-warehouse mr-2 text-indigo-400"></i> ${s.shelf}
+                            </h3>
+                            <span class="text-3xl font-extrabold text-blue-400">${s.totalQty}</span>
+                        </div>
+                        <div class="mt-2 text-sm text-slate-400 font-bold">
+                            <span class="mr-3 text-yellow-400">${s.productCount.size} Çeşit Ürün</span>
+                            <span class="mr-3 text-emerald-400">${s.lotCount} Lot</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            grid.innerHTML = shelfHTML;
         }
 
+        // --- RAF İÇİ DETAY GÖRÜNÜMÜ ---
         function showShelfDetails(shelfKey, switchView = true) {
             currentStockView = 'shelf-details';
             currentShelfFilter = shelfKey;
             
-            document.getElementById('stock-title').innerHTML = `<i class="fas fa-box-open text-blue-400 mr-2"></i> RAF DETAYI: ${shelfKey}`;
+            document.getElementById('stock-title').innerHTML = `<i class="fas fa-box-open text-blue-400 mr-2"></i> RAF: ${shelfKey} İÇERİĞİ`;
             document.getElementById('back-to-list').classList.remove('hidden');
             
             const grid = document.getElementById('stock-list');
@@ -538,7 +584,7 @@
 
             // Sadece bu rafa ait ve arama filtresine uyan ürünleri al
             const shelfProducts = allProducts.filter(p => 
-                (p.shelf ? p.shelf.toUpperCase() : "RAFSIZ") === shelfKey &&
+                (p.shelf ? p.shelf.toUpperCase() : "RAFSIZ / TANIMSIZ") === shelfKey &&
                 (p.name.toLowerCase().includes(term) || 
                  p.lot.toLowerCase().includes(term) ||
                  (p.ref && p.ref.toLowerCase().includes(term)))
@@ -549,7 +595,7 @@
                  return;
             }
 
-            // RAF İÇİ LİSTE GÖRÜNÜMÜ
+            // RAF İÇİ LİSTE GÖRÜNÜMÜ (Lot Bazlı)
             grid.innerHTML = shelfProducts.map(p => `
                 <div class="bg-[#1a1a1a] rounded-xl border border-gray-800 overflow-hidden shadow-md">
                     <div class="p-3 border-b border-gray-700 flex justify-between bg-gray-900 items-center">
@@ -577,33 +623,8 @@
             }
         }
         
-        function generateProductCard(p) {
-            // Ana Lot Listesi Görünümü
-            return `
-                <div class="bg-[#1a1a1a] rounded-xl border border-gray-800 overflow-hidden shadow-md">
-                    <div class="p-3 border-b border-gray-700 flex justify-between bg-gray-900 items-center">
-                        <div>
-                            <span class="font-bold text-sm text-white block">${p.name}</span>
-                            <div class="flex gap-2 mt-1 items-center">
-                                <span class="lot-tag">${p.lot}</span>
-                                <span class="text-[10px] text-slate-400 font-bold self-center">REF: ${p.ref}</span>
-                                <button onclick="showShelfDetails('${p.shelf || "RAFSIZ"}')" class="text-[10px] text-indigo-400 font-extrabold self-center bg-indigo-900/30 px-2 py-0.5 rounded hover:bg-indigo-900 transition">
-                                    <i class="fas fa-box-open mr-1"></i> ${p.shelf ? p.shelf : 'RAFSIZ'}
-                                </button>
-                            </div>
-                        </div>
-                        <span class="font-bold ${p.totalQty > 0 ? 'text-blue-400' : 'text-red-500'} text-lg">${p.totalQty}</span>
-                    </div>
-                    <div class="max-h-32 overflow-y-auto bg-black p-2">
-                         <h4 class="text-[9px] text-slate-500 font-bold mb-1">SON İŞLEMLER:</h4>
-                        <table class="w-full text-[10px] text-left text-slate-400">
-                            <thead><tr><th>SN</th><th>LOT</th><th>TÜR</th></tr></thead>
-                            <tbody>${p.logs.slice().reverse().slice(0, 5).map(l => `<tr class="border-b border-gray-900"><td class="py-1 font-mono text-white">${l.sn}</td><td>${l.lot}</td><td class="${l.type==='IN'?'text-emerald-500':'text-rose-500'} font-bold">${l.type==='IN'?'GİRİŞ':'ÇIKIŞ'}</td></tr>`).join('')}</tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-        }
+        // Bu fonksiyona artık ihtiyaç kalmadı, silinmiştir.
+        // function generateProductCard(p) { ... }
 
 
         function showToast(msg = "KAYDEDİLDİ", bgClass = "bg-emerald-600") {
@@ -632,11 +653,11 @@
                 targetPage = document.getElementById('page-stocks'); 
                 targetButton = document.querySelectorAll('.nav-btn')[1]; 
                 
-                // Eğer Stoklar sekmesine geçiş yapılıyorsa ve Raf Detayındaysak, Raf Detayını tekrar yükle
+                // Stoklar sekmesine geçiş yapıldığında doğru görünümü yükle
                 if (currentStockView === 'shelf-details') {
                      showShelfDetails(currentShelfFilter, false); 
                 } else {
-                     renderStocks();
+                     renderStocks(); // Temel Raf Listesini yükle
                 }
             } else {
                  if(page === 'share') { shareWhatsApp(); targetButton = document.querySelectorAll('.nav-btn')[2]; }
@@ -672,5 +693,6 @@
         init();
         switchPage('home'); 
     </script>
+
 </body>
 </html>
