@@ -12,7 +12,8 @@
 
     <style>
         /* TEMEL AYARLAR */
-        body { background-color: #0f172a; color: #fff; height: 100vh; overflow: hidden; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        /* Body'yi tamamen Siyah (black) yapıyoruz */
+        body { background-color: #000; color: #fff; height: 100vh; overflow: hidden; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
 
         /* KAMERA KATMANI */
@@ -58,76 +59,85 @@
         
         /* LOT ETİKETİ */
         .lot-tag { background: #f59e0b; color: #000; font-weight: bold; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+        
+        /* NAVBAR ÖZEL STİLİ */
+        .nav-btn.active { color: #3b82f6; }
+        .nav-btn:not(.active) { color: #64748b; }
+        .nav-btn:not(.active):hover { color: #cbd5e1; }
     </style>
 </head>
-<body class="flex flex-col h-full bg-slate-900">
+<body class="flex flex-col h-full bg-black">
 
-    <!-- HEADER -->
-    <header class="bg-slate-900 border-b border-slate-700 p-4 flex justify-between items-center shadow-lg z-20">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-lg"><i class="fas fa-layer-group"></i></div>
+    <header class="bg-black border-b border-gray-900 p-4 flex justify-between items-center shadow-lg z-20">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-md bg-indigo-600 flex items-center justify-center text-white font-bold text-sm"><i class="fas fa-layer-group"></i></div>
             <div>
-                <h1 class="font-bold text-slate-100 text-sm tracking-wide">ARC v12 LOT-MATRIX</h1>
-                <div class="text-[10px] text-green-400 font-bold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> ONLINE</div>
+                <h1 class="font-bold text-white text-xs tracking-wider">ARC v12 LOT-MATRIX</h1>
+                <div class="text-[9px] text-green-400 font-bold flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> ONLINE</div>
             </div>
         </div>
-        <button onclick="openSettings()" class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 border border-slate-600"><i class="fas fa-cog"></i></button>
+        <button onclick="openSettings()" class="w-9 h-9 bg-gray-900 rounded-full flex items-center justify-center text-slate-400 border border-gray-700 hover:text-white transition"><i class="fas fa-cog text-sm"></i></button>
     </header>
 
-    <!-- SAYFALAR -->
-    <main class="flex-1 overflow-y-auto relative no-scrollbar pb-20 bg-slate-900">
+    <main class="flex-1 overflow-y-auto relative no-scrollbar pb-20 bg-black">
         
-        <!-- DASHBOARD -->
-        <div id="page-home" class="p-4 space-y-4">
+        <div id="page-home" class="p-4 space-y-5">
             
             <div class="grid grid-cols-2 gap-4">
-                <button onclick="startScanner('IN')" class="bg-slate-800 hover:bg-slate-700 active:scale-95 transition p-6 rounded-2xl border-t-4 border-emerald-500 shadow-xl flex flex-col items-center gap-3">
-                    <i class="fas fa-arrow-down text-3xl text-emerald-500"></i>
-                    <div class="text-center"><div class="text-lg font-bold text-white">GİRİŞ</div><div class="text-[10px] text-slate-400">Mal Kabul</div></div>
+                <button onclick="startScanner('IN')" class="bg-[#1a1a1a] hover:bg-[#222] active:scale-[.98] transition p-6 rounded-2xl border-b-4 border-emerald-500 shadow-xl flex flex-col items-center gap-2 transform">
+                    <div class="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                        <i class="fas fa-arrow-down text-2xl text-emerald-400"></i>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-base font-extrabold text-white">GİRİŞ (IN)</div>
+                        <div class="text-[10px] text-slate-400 mt-1">Mal Kabul Tarama</div>
+                    </div>
                 </button>
-                <button onclick="startScanner('OUT')" class="bg-slate-800 hover:bg-slate-700 active:scale-95 transition p-6 rounded-2xl border-t-4 border-rose-500 shadow-xl flex flex-col items-center gap-3">
-                    <i class="fas fa-arrow-up text-3xl text-rose-500"></i>
-                    <div class="text-center"><div class="text-lg font-bold text-white">ÇIKIŞ</div><div class="text-[10px] text-slate-400">Sevkiyat</div></div>
+                <button onclick="startScanner('OUT')" class="bg-[#1a1a1a] hover:bg-[#222] active:scale-[.98] transition p-6 rounded-2xl border-b-4 border-rose-500 shadow-xl flex flex-col items-center gap-2 transform">
+                    <div class="w-12 h-12 rounded-full bg-rose-500/20 flex items-center justify-center">
+                        <i class="fas fa-arrow-up text-2xl text-rose-400"></i>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-base font-extrabold text-white">ÇIKIŞ (OUT)</div>
+                        <div class="text-[10px] text-slate-400 mt-1">Sevkiyat Tarama</div>
+                    </div>
                 </button>
             </div>
 
-            <!-- ÖZET -->
-            <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
-                <h3 class="text-xs font-bold text-slate-400 mb-3 uppercase flex justify-between">
-                    <span>Parti (Lot) Durumu</span>
-                    <span id="total-badge" class="bg-blue-900 text-blue-300 px-2 rounded text-[10px]">0 Kayıt</span>
+            <div class="bg-[#1a1a1a] rounded-2xl border border-gray-800 p-4 shadow-xl">
+                <h3 class="text-xs font-bold text-slate-400 mb-3 uppercase flex justify-between items-center">
+                    <span>Parti (Lot) Durumu Özeti</span>
+                    <span id="total-badge" class="bg-blue-900/50 text-blue-300 px-2 py-0.5 rounded-full text-[10px] font-extrabold">0 Parti</span>
                 </h3>
-                <div id="summary-list" class="space-y-3"></div>
+                <div id="summary-list" class="space-y-3">
+                     <div class="text-center text-xs text-slate-500 pt-2">Tarama yaparak ilk partiyi ekleyin.</div>
+                </div>
             </div>
         </div>
 
-        <!-- STOKLAR -->
         <div id="page-stocks" class="hidden p-4 space-y-4">
-            <input type="text" id="search-input" onkeyup="renderStocks()" placeholder="GTIN, REF, LOT veya İsim Ara..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm outline-none text-white focus:border-blue-500">
+            <input type="text" id="search-input" onkeyup="renderStocks()" placeholder="GTIN, REF, LOT veya İsim Ara..." class="w-full bg-[#1a1a1a] border border-gray-800 rounded-xl px-4 py-3 text-sm outline-none text-white focus:border-blue-500">
             <div id="stock-list" class="grid grid-cols-1 gap-3 pb-20"></div>
         </div>
     </main>
 
-    <!-- NAVBAR -->
-    <nav class="bg-slate-900 border-t border-slate-800 h-16 flex z-30">
-        <button onclick="switchPage('home')" class="flex-1 flex flex-col items-center justify-center text-blue-500 nav-btn active">
+    <nav class="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-sm border-t border-gray-700 h-16 flex z-30 shadow-2xl shadow-black/50">
+        <button onclick="switchPage('home')" class="flex-1 flex flex-col items-center justify-center nav-btn transition duration-200 active">
             <i class="fas fa-home text-lg"></i><span class="text-[10px] font-bold mt-1">ANA EKRAN</span>
         </button>
-        <button onclick="switchPage('stocks')" class="flex-1 flex flex-col items-center justify-center text-slate-500 hover:text-slate-300 nav-btn">
+        <button onclick="switchPage('stocks')" class="flex-1 flex flex-col items-center justify-center nav-btn transition duration-200">
             <i class="fas fa-boxes text-lg"></i><span class="text-[10px] font-bold mt-1">STOKLAR</span>
         </button>
-        <button onclick="shareWhatsApp()" class="flex-1 flex flex-col items-center justify-center text-slate-500 hover:text-slate-300 nav-btn">
+        <button onclick="shareWhatsApp()" class="flex-1 flex flex-col items-center justify-center nav-btn transition duration-200">
             <i class="fab fa-whatsapp text-lg"></i><span class="text-[10px] font-bold mt-1">PAYLAŞ</span>
         </button>
     </nav>
 
-    <!-- KAMERA ARAYÜZÜ -->
     <div id="scanner-container">
         <div id="reader"></div>
         <div class="scan-overlay"></div>
         <div id="focus-frame" class="focus-box"><div class="laser"></div></div>
         
-        <!-- Üst Bar -->
         <div class="absolute top-0 left-0 w-full p-4 flex justify-between z-[100]">
             <div class="bg-black/60 backdrop-blur px-3 py-1 rounded border border-white/20">
                 <div class="text-[10px] text-slate-300 font-bold" id="cam-mode">MOD</div>
@@ -142,8 +152,7 @@
             <button onclick="stopScanner()" class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white"><i class="fas fa-times"></i></button>
         </div>
 
-        <!-- Zoom -->
-        <div class="absolute bottom-8 left-0 w-full px-8 z-[100]">
+        <div class="absolute bottom-20 left-0 w-full px-8 z-[100]">
             <div class="bg-black/50 backdrop-blur-md rounded-xl p-3 border border-white/10">
                 <div class="flex justify-between text-xs text-white/80 font-bold mb-1 font-mono"><span>1x</span><span>ZOOM</span><span>5x</span></div>
                 <input type="range" id="zoom-slider" min="1" max="5" step="0.1" value="1" oninput="applyZoom(this.value)">
@@ -151,13 +160,11 @@
         </div>
     </div>
 
-    <!-- ÜRÜN İŞLEM PENCERESİ (MODAL) -->
     <div id="product-modal" class="fixed inset-0 hidden bg-black/90 backdrop-blur flex items-end sm:items-center justify-center modal-layer">
-        <div class="bg-slate-800 w-full sm:w-[450px] rounded-t-3xl sm:rounded-2xl border-t border-slate-600 shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
+        <div class="bg-[#1a1a1a] w-full sm:w-[450px] rounded-t-3xl sm:rounded-2xl border-t border-gray-700 shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
             
-            <!-- Fotoğraf -->
             <div class="flex gap-4 mb-4">
-                <div class="w-20 h-20 bg-slate-700 rounded-lg flex-none overflow-hidden relative border border-slate-600">
+                <div class="w-20 h-20 bg-gray-700 rounded-lg flex-none overflow-hidden relative border border-gray-600">
                     <img id="modal-img" src="" class="w-full h-full object-cover hidden">
                     <div id="modal-no-img" class="w-full h-full flex items-center justify-center text-slate-500"><i class="fas fa-camera text-xl"></i></div>
                     <label class="absolute inset-0 cursor-pointer flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition">
@@ -167,13 +174,12 @@
                 </div>
                 <div class="flex-1">
                     <label class="text-[10px] text-slate-400 font-bold">ÜRÜN ADI</label>
-                    <input type="text" id="modal-name" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm outline-none focus:border-blue-500">
+                    <input type="text" id="modal-name" class="w-full bg-black border border-gray-700 rounded p-2 text-white text-sm outline-none focus:border-blue-500">
                     <div class="text-[10px] text-blue-400 mt-1 font-bold" id="modal-total-stock">BU PARTİDE STOK: 0</div>
                 </div>
             </div>
 
-            <!-- Detaylar (LOT AYIRIMI) -->
-            <div class="bg-slate-900 p-3 rounded-lg border border-slate-700 mb-4 grid grid-cols-2 gap-2">
+            <div class="bg-black p-3 rounded-lg border border-gray-700 mb-4 grid grid-cols-2 gap-2">
                 <div>
                     <label class="text-[10px] text-slate-500 font-bold">GTIN</label>
                     <div class="text-xs font-mono text-white truncate" id="modal-gtin">---</div>
@@ -182,7 +188,7 @@
                     <label class="text-[10px] text-slate-500 font-bold">REF NO</label>
                     <div class="text-xs font-mono text-yellow-400 truncate font-bold" id="modal-ref">---</div>
                 </div>
-                <div class="col-span-2 bg-slate-800 p-1 rounded border border-yellow-600/30">
+                <div class="col-span-2 bg-[#1a1a1a] p-1 rounded border border-yellow-600/30">
                     <label class="text-[10px] text-yellow-500 font-bold">LOT (PARTİ NO)</label>
                     <div class="text-sm font-mono text-white font-bold" id="modal-lot">---</div>
                 </div>
@@ -196,33 +202,31 @@
                 </div>
                 <div class="col-span-2">
                      <label class="text-[10px] text-slate-500 font-bold">RAF / KONUM</label>
-                     <input type="text" id="modal-shelf" placeholder="A-01" class="w-full bg-slate-800 border-b border-slate-600 p-1 text-xs text-white uppercase outline-none">
+                     <input type="text" id="modal-shelf" placeholder="A-01" class="w-full bg-[#1a1a1a] border-b border-gray-600 p-1 text-xs text-white uppercase outline-none">
                 </div>
             </div>
 
-            <button onclick="saveProduct()" id="save-btn" class="w-full py-4 bg-blue-600 rounded-xl font-bold text-white shadow-lg mb-2">KAYDET</button>
-            <button onclick="closeModal()" class="w-full py-3 text-slate-500 font-bold text-xs">İPTAL</button>
+            <button onclick="saveProduct()" id="save-btn" class="w-full py-4 bg-blue-600 rounded-xl font-bold text-white shadow-lg mb-2 transition">KAYDET</button>
+            <button onclick="closeModal()" class="w-full py-3 text-slate-500 font-bold text-xs hover:text-white transition">İPTAL</button>
         </div>
     </div>
 
-    <!-- TOAST -->
     <div id="toast"><i class="fas fa-check"></i><span id="toast-text">KAYDEDİLDİ</span></div>
 
-    <!-- AYARLAR -->
     <div id="settings-modal" class="fixed inset-0 hidden bg-black/90 backdrop-blur flex items-center justify-center modal-layer p-6">
-        <div class="bg-slate-800 rounded-2xl p-6 w-full max-w-sm border border-slate-600">
+        <div class="bg-[#1a1a1a] rounded-2xl p-6 w-full max-w-sm border border-gray-700">
             <h3 class="font-bold text-white mb-4">Ayarlar</h3>
-            <button onclick="backupData()" class="w-full py-3 bg-blue-600 rounded-xl font-bold text-white mb-2">Yedek İndir (JSON)</button>
-            <button onclick="exportExcel()" class="w-full py-3 bg-emerald-600 rounded-xl font-bold text-white mb-2">Rapor İndir (Excel)</button>
-            <button onclick="resetData()" class="w-full py-3 bg-red-900/50 text-red-400 border border-red-900 rounded-xl font-bold mb-4">Verileri Sıfırla</button>
-            <button onclick="document.getElementById('settings-modal').classList.add('hidden')" class="w-full py-2 text-slate-400">Kapat</button>
+            <button onclick="backupData()" class="w-full py-3 bg-blue-600 rounded-xl font-bold text-white mb-2 hover:bg-blue-500 transition">Yedek İndir (JSON)</button>
+            <button onclick="exportExcel()" class="w-full py-3 bg-emerald-600 rounded-xl font-bold text-white mb-2 hover:bg-emerald-500 transition">Rapor İndir (Excel)</button>
+            <button onclick="resetData()" class="w-full py-3 bg-red-900/50 text-red-400 border border-red-900 rounded-xl font-bold mb-4 hover:bg-red-900/80 transition">Verileri Sıfırla</button>
+            <button onclick="document.getElementById('settings-modal').classList.add('hidden')" class="w-full py-2 text-slate-400 hover:text-white transition">Kapat</button>
         </div>
     </div>
 
     <script>
         // --- ARC v12 ÇEKİRDEĞİ ---
         const DB_KEY = 'arc_v12_lot_db';
-        let db = { products: {} }; // Yapı: { "UNIQUE_ID": { ... } } -> UNIQUE_ID = REF + LOT
+        let db = { products: {} }; 
         let html5QrCode;
         let scanMode = 'IN';
         let parsedData = null;
@@ -256,7 +260,7 @@
                     if(!val) continue;
 
                     if(key === '01') res.gtin = val;
-                    if(key === '10') res.lot = val; // LOT ÇOK ÖNEMLİ
+                    if(key === '10') res.lot = val; 
                     if(key === '17') res.exp = val;
                     if(key === '21') res.sn = val;
                     if(key === '240') res.ref = val;
@@ -264,15 +268,11 @@
             } else {
                 res.sn = text; 
             }
-
-            // *** KRİTİK DEĞİŞİKLİK: UNIQUE ID (BENZERSİZ KİMLİK) ***
-            // Ürünleri birbirinden ayırmak için ID artık sadece REF değil, REF + LOT kombinasyonudur.
-            // Örnek ID: "A3920_P110"
             
             let baseId = res.gtin || res.ref || "UNKNOWN";
-            if(res.ref) baseId = res.ref; // Ref varsa öncelikli kullan
+            if(res.ref) baseId = res.ref; 
             
-            res.uniqueId = baseId + "_" + res.lot; // Lot ile birleştir
+            res.uniqueId = baseId + "_" + res.lot; 
             
             return res;
         }
@@ -328,7 +328,6 @@
 
                 parsedData = parseBarcode(decodedText);
                 
-                // BURADA ARTIK UNIQUE ID (REF + LOT) İLE ARIYORUZ
                 const prod = db.products[parsedData.uniqueId];
                 const isRapid = document.getElementById('rapid-toggle').checked;
 
@@ -358,8 +357,6 @@
                     if(scanMode === 'OUT' && !exists) { alert("BU ÜRÜN BU LOTTA YOK!\nSN: " + parsedData.sn); html5QrCode.resume(); return; }
                 }
 
-                // Yeni ürün veya yeni lot ise -> Modal açılır
-                // İsim arama (Farklı lotta aynı ürün ismi varsa otomatik doldur)
                 let suggestedName = "";
                 if(!prod) {
                     const similarProd = Object.values(db.products).find(p => p.ref === parsedData.ref);
@@ -394,15 +391,15 @@
                 if(prod.image) { img.src = prod.image; img.classList.remove('hidden'); noImg.classList.add('hidden'); }
                 else { img.classList.add('hidden'); noImg.classList.remove('hidden'); }
             } else {
-                nameInp.value = suggestedName || ""; // Eğer başka lotta varsa ismini getir
+                nameInp.value = suggestedName || ""; 
                 shelfInp.value = "";
                 document.getElementById('modal-total-stock').innerText = "YENİ PARTİ (LOT)";
                 img.classList.add('hidden'); noImg.classList.remove('hidden');
             }
 
             const btn = document.getElementById('save-btn');
-            if(scanMode === 'IN') { btn.innerText = "KAYDET (GİRİŞ)"; btn.className = "w-full py-4 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-bold text-white shadow-lg mb-2"; }
-            else { btn.innerText = "KAYDET (ÇIKIŞ)"; btn.className = "w-full py-4 bg-rose-600 hover:bg-rose-500 rounded-xl font-bold text-white shadow-lg mb-2"; }
+            if(scanMode === 'IN') { btn.innerText = "KAYDET (GİRİŞ)"; btn.className = "w-full py-4 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-bold text-white shadow-lg mb-2 transition"; }
+            else { btn.innerText = "KAYDET (ÇIKIŞ)"; btn.className = "w-full py-4 bg-rose-600 hover:bg-rose-500 rounded-xl font-bold text-white shadow-lg mb-2 transition"; }
 
             document.getElementById('product-modal').classList.remove('hidden');
         }
@@ -417,10 +414,9 @@
                 const imgEl = document.getElementById('modal-img');
                 const imgSrc = (!imgEl.classList.contains('hidden')) ? imgEl.src : null;
 
-                // Veritabanı anahtarı artık UNIQUE ID (REF+LOT)
                 if(!db.products[parsedData.uniqueId]) {
                     db.products[parsedData.uniqueId] = { 
-                        id: parsedData.uniqueId, // Benzersiz ID
+                        id: parsedData.uniqueId, 
                         name: name, shelf: shelf, ref: ref, lot: parsedData.lot, image: imgSrc, totalQty: 0, logs: [] 
                     };
                 }
@@ -465,23 +461,26 @@
             const arr = Object.values(db.products);
             document.getElementById('total-badge').innerText = arr.length + " Parti";
             
-            if(arr.length === 0) { list.innerHTML = '<div class="text-center text-xs text-slate-500">Veri Yok</div>'; return; }
+            if(arr.length === 0) { list.innerHTML = '<div class="text-center text-xs text-slate-500 pt-2">Tarama yaparak ilk partiyi ekleyin.</div>'; return; }
 
             list.innerHTML = arr.map(p => `
-                <div class="bg-slate-900 p-3 rounded-lg border border-slate-700 flex justify-between items-center">
+                <div class="bg-black p-3 rounded-xl border border-gray-800 flex justify-between items-center transition hover:border-blue-500">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-slate-800 rounded flex-none overflow-hidden">
+                        <div class="w-10 h-10 bg-gray-900 rounded-md flex-none overflow-hidden border border-gray-700">
                             ${p.image ? `<img src="${p.image}" class="w-full h-full object-cover">` : `<div class="flex items-center justify-center h-full text-slate-600"><i class="fas fa-barcode"></i></div>`}
                         </div>
                         <div class="overflow-hidden">
-                            <div class="text-xs font-bold text-white truncate w-32">${p.name}</div>
+                            <div class="text-sm font-extrabold text-white truncate w-32">${p.name}</div>
                             <div class="flex gap-2 mt-1">
-                                <span class="text-[10px] bg-blue-900 text-blue-200 px-1 rounded">R: ${p.ref}</span>
-                                <span class="text-[10px] bg-yellow-900 text-yellow-200 px-1 rounded">L: ${p.lot}</span>
+                                <span class="text-[10px] font-mono bg-blue-900/50 text-blue-200 px-1.5 rounded">${p.ref}</span>
+                                <span class="text-[10px] font-mono bg-yellow-900/50 text-yellow-200 px-1.5 rounded">${p.lot}</span>
                             </div>
                         </div>
                     </div>
-                    <div class="text-lg font-bold ${p.totalQty > 0 ? 'text-blue-400' : 'text-red-500'}">${p.totalQty}</div>
+                    <div class="flex flex-col items-end">
+                        <span class="text-2xl font-extrabold ${p.totalQty > 0 ? 'text-blue-400' : 'text-red-500'}">${p.totalQty}</span>
+                        <span class="text-[10px] text-slate-500 uppercase font-bold mt-[-4px]">ADET</span>
+                    </div>
                 </div>
             `).join('');
             
@@ -498,8 +497,8 @@
             );
             
             grid.innerHTML = arr.map(p => `
-                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                    <div class="p-3 border-b border-slate-700 flex justify-between bg-slate-800 items-center">
+                <div class="bg-[#1a1a1a] rounded-xl border border-gray-800 overflow-hidden">
+                    <div class="p-3 border-b border-gray-700 flex justify-between bg-[#1a1a1a] items-center">
                         <div>
                             <span class="font-bold text-sm text-white block">${p.name}</span>
                             <div class="flex gap-2 mt-1">
@@ -509,10 +508,10 @@
                         </div>
                         <span class="font-bold text-blue-400 text-lg">${p.totalQty}</span>
                     </div>
-                    <div class="max-h-32 overflow-y-auto bg-slate-900 p-2">
+                    <div class="max-h-32 overflow-y-auto bg-black p-2">
                         <table class="w-full text-[10px] text-left text-slate-400">
                             <thead><tr><th>SN</th><th>LOT</th><th>TÜR</th></tr></thead>
-                            <tbody>${p.logs.slice().reverse().map(l => `<tr class="border-b border-slate-800"><td class="py-1 font-mono text-white">${l.sn}</td><td>${l.lot}</td><td class="${l.type==='IN'?'text-emerald-500':'text-rose-500'} font-bold">${l.type==='IN'?'GİRİŞ':'ÇIKIŞ'}</td></tr>`).join('')}</tbody>
+                            <tbody>${p.logs.slice().reverse().map(l => `<tr class="border-b border-gray-900"><td class="py-1 font-mono text-white">${l.sn}</td><td>${l.lot}</td><td class="${l.type==='IN'?'text-emerald-500':'text-rose-500'} font-bold">${l.type==='IN'?'GİRİŞ':'ÇIKIŞ'}</td></tr>`).join('')}</tbody>
                         </table>
                     </div>
                 </div>
@@ -530,12 +529,29 @@
 
         function resetData() { if(confirm("Tüm veriler silinecek!")) { localStorage.removeItem(DB_KEY); db = { products: {} }; updateUI(); } }
         function openSettings() { document.getElementById('settings-modal').classList.remove('hidden'); }
+        
         function switchPage(page) {
             document.querySelectorAll('main > div').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active', 'text-blue-500'));
-            if(page === 'home') { document.getElementById('page-home').classList.remove('hidden'); document.querySelectorAll('.nav-btn')[0].classList.add('active', 'text-blue-500'); }
-            if(page === 'stocks') { document.getElementById('page-stocks').classList.remove('hidden'); document.querySelectorAll('.nav-btn')[1].classList.add('active', 'text-blue-500'); renderStocks(); }
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+
+            let targetPage;
+            let targetButton;
+
+            if(page === 'home') { 
+                targetPage = document.getElementById('page-home'); 
+                targetButton = document.querySelectorAll('.nav-btn')[0]; 
+            } else if(page === 'stocks') { 
+                targetPage = document.getElementById('page-stocks'); 
+                targetButton = document.querySelectorAll('.nav-btn')[1]; 
+                renderStocks();
+            } else {
+                 if(page === 'share') { shareWhatsApp(); targetButton = document.querySelectorAll('.nav-btn')[2]; }
+            }
+
+            if(targetPage) { targetPage.classList.remove('hidden'); }
+            if(targetButton) { targetButton.classList.add('active'); }
         }
+
         function backupData() {
             const d = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
             const a = document.createElement('a'); a.href = d; a.download = 'ARC_Yedek.json'; a.click();
@@ -550,10 +566,17 @@
              let msg = "ARC STOK RAPORU:\n";
              Object.values(db.products).forEach(p => { msg += `${p.name} (Lot:${p.lot}): ${p.totalQty} Adet\n`; });
              window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+             
+             const shareButton = document.querySelectorAll('.nav-btn')[2];
+             shareButton.classList.add('active');
+             setTimeout(() => {
+                 shareButton.classList.remove('active');
+                 switchPage('home');
+             }, 300);
         }
 
         init();
+        switchPage('home'); 
     </script>
 </body>
 </html>
-
