@@ -12,7 +12,6 @@
 
     <style>
         /* TEMEL AYARLAR */
-        /* Body'yi tamamen Siyah (black) yapıyoruz */
         body { background-color: #000; color: #fff; height: 100vh; overflow: hidden; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
 
@@ -64,6 +63,7 @@
         .nav-btn.active { color: #3b82f6; }
         .nav-btn:not(.active) { color: #64748b; }
         .nav-btn:not(.active):hover { color: #cbd5e1; }
+
     </style>
 </head>
 <body class="flex flex-col h-full bg-black">
@@ -106,17 +106,23 @@
 
             <div class="bg-[#1a1a1a] rounded-2xl border border-gray-800 p-4 shadow-xl">
                 <h3 class="text-xs font-bold text-slate-400 mb-3 uppercase flex justify-between items-center">
-                    <span>Parti (Lot) Durumu Özeti</span>
+                    <span>Aktif Parti (Lot) Özeti</span>
                     <span id="total-badge" class="bg-blue-900/50 text-blue-300 px-2 py-0.5 rounded-full text-[10px] font-extrabold">0 Parti</span>
                 </h3>
                 <div id="summary-list" class="space-y-3">
-                     <div class="text-center text-xs text-slate-500 pt-2">Tarama yaparak ilk partiyi ekleyin.</div>
+                     <div class="text-center text-xs text-slate-500 pt-2">Aktif stokta ürün yok.</div>
                 </div>
             </div>
         </div>
 
         <div id="page-stocks" class="hidden p-4 space-y-4">
+            <div id="stock-header" class="flex items-center gap-3">
+                <button id="back-to-list" onclick="renderStocks()" class="w-8 h-8 bg-[#1a1a1a] text-white rounded-full flex items-center justify-center hidden hover:bg-gray-700 transition"><i class="fas fa-arrow-left text-sm"></i></button>
+                <h2 id="stock-title" class="text-xl font-bold text-white">Tüm Lotlar</h2>
+            </div>
+            
             <input type="text" id="search-input" onkeyup="renderStocks()" placeholder="GTIN, REF, LOT veya İsim Ara..." class="w-full bg-[#1a1a1a] border border-gray-800 rounded-xl px-4 py-3 text-sm outline-none text-white focus:border-blue-500">
+            
             <div id="stock-list" class="grid grid-cols-1 gap-3 pb-20"></div>
         </div>
     </main>
@@ -230,6 +236,8 @@
         let html5QrCode;
         let scanMode = 'IN';
         let parsedData = null;
+        let currentStockView = 'product-list'; // 'product-list' veya 'shelf-details'
+        let currentShelfFilter = null; // showShelfDetails tarafından belirlenir
 
         function init() {
             try {
@@ -455,68 +463,148 @@
             }
         }
 
-        // --- UI ---
+        // --- STOK & RAF GÖRÜNÜM MANTIKLARI ---
         function updateUI() {
             const list = document.getElementById('summary-list');
-            const arr = Object.values(db.products);
-            document.getElementById('total-badge').innerText = arr.length + " Parti";
+            const liveArr = Object.values(db.products).filter(p => p.totalQty > 0);
+            document.getElementById('total-badge').innerText = liveArr.length + " Parti";
             
-            if(arr.length === 0) { list.innerHTML = '<div class="text-center text-xs text-slate-500 pt-2">Tarama yaparak ilk partiyi ekleyin.</div>'; return; }
-
-            list.innerHTML = arr.map(p => `
-                <div class="bg-black p-3 rounded-xl border border-gray-800 flex justify-between items-center transition hover:border-blue-500">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-gray-900 rounded-md flex-none overflow-hidden border border-gray-700">
-                            ${p.image ? `<img src="${p.image}" class="w-full h-full object-cover">` : `<div class="flex items-center justify-center h-full text-slate-600"><i class="fas fa-barcode"></i></div>`}
-                        </div>
-                        <div class="overflow-hidden">
-                            <div class="text-sm font-extrabold text-white truncate w-32">${p.name}</div>
-                            <div class="flex gap-2 mt-1">
-                                <span class="text-[10px] font-mono bg-blue-900/50 text-blue-200 px-1.5 rounded">${p.ref}</span>
-                                <span class="text-[10px] font-mono bg-yellow-900/50 text-yellow-200 px-1.5 rounded">${p.lot}</span>
+            if(liveArr.length === 0) { list.innerHTML = '<div class="text-center text-xs text-slate-500 pt-2">Aktif stokta ürün yok.</div>'; }
+            else {
+                list.innerHTML = liveArr.map(p => `
+                    <div class="bg-black p-3 rounded-xl border border-gray-800 flex justify-between items-center transition hover:border-blue-500" onclick="showShelfDetails('${p.shelf || "RAFSIZ"}')">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-gray-900 rounded-md flex-none overflow-hidden border border-gray-700">
+                                ${p.image ? `<img src="${p.image}" class="w-full h-full object-cover">` : `<div class="flex items-center justify-center h-full text-slate-600"><i class="fas fa-barcode"></i></div>`}
+                            </div>
+                            <div class="overflow-hidden">
+                                <div class="text-sm font-extrabold text-white truncate w-32">${p.name}</div>
+                                <div class="flex gap-2 mt-1">
+                                    <span class="text-[10px] font-mono bg-blue-900/50 text-blue-200 px-1.5 rounded">${p.ref}</span>
+                                    <span class="text-[10px] font-mono bg-yellow-900/50 text-yellow-200 px-1.5 rounded">${p.lot}</span>
+                                </div>
                             </div>
                         </div>
+                        <div class="flex flex-col items-end">
+                            <span class="text-2xl font-extrabold ${p.totalQty > 0 ? 'text-blue-400' : 'text-red-500'}">${p.totalQty}</span>
+                            <span class="text-[10px] text-indigo-400 uppercase font-bold mt-[-4px]">${p.shelf ? p.shelf : 'RAFSIZ'}</span>
+                        </div>
                     </div>
-                    <div class="flex flex-col items-end">
-                        <span class="text-2xl font-extrabold ${p.totalQty > 0 ? 'text-blue-400' : 'text-red-500'}">${p.totalQty}</span>
-                        <span class="text-[10px] text-slate-500 uppercase font-bold mt-[-4px]">ADET</span>
-                    </div>
-                </div>
-            `).join('');
+                `).join('');
+            }
             
-            renderStocks();
+            if (document.getElementById('page-stocks').classList.contains('hidden') === false) {
+                 // Sadece Stoklar sekmesindeyken günceller
+                 if (currentStockView === 'shelf-details') {
+                     showShelfDetails(currentShelfFilter, false); // Aynı raf detayını tekrar yükle
+                 } else {
+                     renderStocks();
+                 }
+            }
         }
 
         function renderStocks() {
+            currentStockView = 'product-list';
+            currentShelfFilter = null;
+            document.getElementById('stock-title').innerText = "Tüm Lotlar";
+            document.getElementById('back-to-list').classList.add('hidden');
+            
             const grid = document.getElementById('stock-list'); if(!grid) return;
             const term = document.getElementById('search-input').value.toLowerCase();
-            const arr = Object.values(db.products).filter(p => 
+            const allProducts = Object.values(db.products);
+            
+            // Arama filtresi: tüm partiler dahil
+            const filteredProducts = allProducts.filter(p => 
                 p.name.toLowerCase().includes(term) || 
                 p.lot.toLowerCase().includes(term) ||
-                (p.ref && p.ref.toLowerCase().includes(term))
-            );
+                (p.ref && p.ref.toLowerCase().includes(term)) ||
+                (p.shelf && p.shelf.toLowerCase().includes(term))
+            ).sort((a,b) => b.totalQty - a.totalQty); // Çoktan aza sıralama
+
+            // ÜRÜN LİSTESİ (Lot bazlı)
+            grid.innerHTML = filteredProducts.map(p => generateProductCard(p)).join('');
+        }
+
+        function showShelfDetails(shelfKey, switchView = true) {
+            currentStockView = 'shelf-details';
+            currentShelfFilter = shelfKey;
             
-            grid.innerHTML = arr.map(p => `
-                <div class="bg-[#1a1a1a] rounded-xl border border-gray-800 overflow-hidden">
-                    <div class="p-3 border-b border-gray-700 flex justify-between bg-[#1a1a1a] items-center">
+            document.getElementById('stock-title').innerHTML = `<i class="fas fa-box-open text-blue-400 mr-2"></i> RAF DETAYI: ${shelfKey}`;
+            document.getElementById('back-to-list').classList.remove('hidden');
+            
+            const grid = document.getElementById('stock-list');
+            const term = document.getElementById('search-input').value.toLowerCase();
+            const allProducts = Object.values(db.products);
+
+            // Sadece bu rafa ait ve arama filtresine uyan ürünleri al
+            const shelfProducts = allProducts.filter(p => 
+                (p.shelf ? p.shelf.toUpperCase() : "RAFSIZ") === shelfKey &&
+                (p.name.toLowerCase().includes(term) || 
+                 p.lot.toLowerCase().includes(term) ||
+                 (p.ref && p.ref.toLowerCase().includes(term)))
+            ).sort((a,b) => a.name.localeCompare(b.name)); // Ürün ismine göre A-Z sırala
+
+            if (shelfProducts.length === 0) {
+                 grid.innerHTML = `<div class="bg-gray-900 p-4 rounded-xl text-center text-slate-500">Bu rafta (veya aramanıza uygun) aktif ürün bulunamadı.</div>`;
+                 return;
+            }
+
+            // RAF İÇİ LİSTE GÖRÜNÜMÜ
+            grid.innerHTML = shelfProducts.map(p => `
+                <div class="bg-[#1a1a1a] rounded-xl border border-gray-800 overflow-hidden shadow-md">
+                    <div class="p-3 border-b border-gray-700 flex justify-between bg-gray-900 items-center">
                         <div>
                             <span class="font-bold text-sm text-white block">${p.name}</span>
-                            <div class="flex gap-2 mt-1">
-                                <span class="lot-tag">LOT: ${p.lot}</span>
+                            <div class="flex gap-2 mt-1 items-center">
+                                <span class="lot-tag">${p.lot}</span>
                                 <span class="text-[10px] text-slate-400 font-bold self-center">REF: ${p.ref}</span>
                             </div>
                         </div>
-                        <span class="font-bold text-blue-400 text-lg">${p.totalQty}</span>
+                        <span class="font-bold ${p.totalQty > 0 ? 'text-blue-400' : 'text-red-500'} text-lg">${p.totalQty}</span>
                     </div>
                     <div class="max-h-32 overflow-y-auto bg-black p-2">
+                         <h4 class="text-[9px] text-slate-500 font-bold mb-1">SON İŞLEMLER:</h4>
                         <table class="w-full text-[10px] text-left text-slate-400">
                             <thead><tr><th>SN</th><th>LOT</th><th>TÜR</th></tr></thead>
-                            <tbody>${p.logs.slice().reverse().map(l => `<tr class="border-b border-gray-900"><td class="py-1 font-mono text-white">${l.sn}</td><td>${l.lot}</td><td class="${l.type==='IN'?'text-emerald-500':'text-rose-500'} font-bold">${l.type==='IN'?'GİRİŞ':'ÇIKIŞ'}</td></tr>`).join('')}</tbody>
+                            <tbody>${p.logs.slice().reverse().slice(0, 5).map(l => `<tr class="border-b border-gray-900"><td class="py-1 font-mono text-white">${l.sn}</td><td>${l.lot}</td><td class="${l.type==='IN'?'text-emerald-500':'text-rose-500'} font-bold">${l.type==='IN'?'GİRİŞ':'ÇIKIŞ'}</td></tr>`).join('')}</tbody>
                         </table>
                     </div>
                 </div>
             `).join('');
+            
+            if (switchView) {
+                switchPage('stocks');
+            }
         }
+        
+        function generateProductCard(p) {
+            // Ana Lot Listesi Görünümü
+            return `
+                <div class="bg-[#1a1a1a] rounded-xl border border-gray-800 overflow-hidden shadow-md">
+                    <div class="p-3 border-b border-gray-700 flex justify-between bg-gray-900 items-center">
+                        <div>
+                            <span class="font-bold text-sm text-white block">${p.name}</span>
+                            <div class="flex gap-2 mt-1 items-center">
+                                <span class="lot-tag">${p.lot}</span>
+                                <span class="text-[10px] text-slate-400 font-bold self-center">REF: ${p.ref}</span>
+                                <button onclick="showShelfDetails('${p.shelf || "RAFSIZ"}')" class="text-[10px] text-indigo-400 font-extrabold self-center bg-indigo-900/30 px-2 py-0.5 rounded hover:bg-indigo-900 transition">
+                                    <i class="fas fa-box-open mr-1"></i> ${p.shelf ? p.shelf : 'RAFSIZ'}
+                                </button>
+                            </div>
+                        </div>
+                        <span class="font-bold ${p.totalQty > 0 ? 'text-blue-400' : 'text-red-500'} text-lg">${p.totalQty}</span>
+                    </div>
+                    <div class="max-h-32 overflow-y-auto bg-black p-2">
+                         <h4 class="text-[9px] text-slate-500 font-bold mb-1">SON İŞLEMLER:</h4>
+                        <table class="w-full text-[10px] text-left text-slate-400">
+                            <thead><tr><th>SN</th><th>LOT</th><th>TÜR</th></tr></thead>
+                            <tbody>${p.logs.slice().reverse().slice(0, 5).map(l => `<tr class="border-b border-gray-900"><td class="py-1 font-mono text-white">${l.sn}</td><td>${l.lot}</td><td class="${l.type==='IN'?'text-emerald-500':'text-rose-500'} font-bold">${l.type==='IN'?'GİRİŞ':'ÇIKIŞ'}</td></tr>`).join('')}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
 
         function showToast(msg = "KAYDEDİLDİ", bgClass = "bg-emerald-600") {
             const t = document.getElementById('toast');
@@ -543,7 +631,13 @@
             } else if(page === 'stocks') { 
                 targetPage = document.getElementById('page-stocks'); 
                 targetButton = document.querySelectorAll('.nav-btn')[1]; 
-                renderStocks();
+                
+                // Eğer Stoklar sekmesine geçiş yapılıyorsa ve Raf Detayındaysak, Raf Detayını tekrar yükle
+                if (currentStockView === 'shelf-details') {
+                     showShelfDetails(currentShelfFilter, false); 
+                } else {
+                     renderStocks();
+                }
             } else {
                  if(page === 'share') { shareWhatsApp(); targetButton = document.querySelectorAll('.nav-btn')[2]; }
             }
@@ -564,7 +658,7 @@
         }
         function shareWhatsApp() {
              let msg = "ARC STOK RAPORU:\n";
-             Object.values(db.products).forEach(p => { msg += `${p.name} (Lot:${p.lot}): ${p.totalQty} Adet\n`; });
+             Object.values(db.products).filter(p => p.totalQty > 0).forEach(p => { msg += `${p.name} (Lot:${p.lot}, Raf:${p.shelf || 'RAFSIZ'}): ${p.totalQty} Adet\n`; });
              window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
              
              const shareButton = document.querySelectorAll('.nav-btn')[2];
