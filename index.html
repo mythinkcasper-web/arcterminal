@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARC v12 (Lot Matrix)</title>
+    <title>ARC v13 (Raf Yönetimi)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -72,7 +72,7 @@
         <div class="flex items-center gap-2">
             <div class="w-8 h-8 rounded-md bg-indigo-600 flex items-center justify-center text-white font-bold text-sm"><i class="fas fa-layer-group"></i></div>
             <div>
-                <h1 class="font-bold text-white text-xs tracking-wider">ARC v12 LOT-MATRIX</h1>
+                <h1 class="font-bold text-white text-xs tracking-wider">ARC v13 RAF-SİSTEMİ</h1>
                 <div class="text-[9px] text-green-400 font-bold flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> ONLINE</div>
             </div>
         </div>
@@ -90,7 +90,7 @@
                     </div>
                     <div class="text-center">
                         <div class="text-base font-extrabold text-white">GİRİŞ (IN)</div>
-                        <div class="text-[10px] text-slate-400 mt-1">Mal Kabul Tarama</div>
+                        <div class="text-[10px] text-slate-400 mt-1">Mal Kabul</div>
                     </div>
                 </button>
                 <button onclick="startScanner('OUT')" class="bg-[#1a1a1a] hover:bg-[#222] active:scale-[.98] transition p-6 rounded-2xl border-b-4 border-rose-500 shadow-xl flex flex-col items-center gap-2 transform">
@@ -99,10 +99,23 @@
                     </div>
                     <div class="text-center">
                         <div class="text-base font-extrabold text-white">ÇIKIŞ (OUT)</div>
-                        <div class="text-[10px] text-slate-400 mt-1">Sevkiyat Tarama</div>
+                        <div class="text-[10px] text-slate-400 mt-1">Sevkiyat</div>
                     </div>
                 </button>
             </div>
+
+            <button onclick="startScanner('SHELF')" class="w-full bg-[#1a1a1a] hover:bg-[#222] active:scale-[.98] transition p-4 rounded-2xl border-b-4 border-yellow-500 shadow-xl flex items-center justify-between transform">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                        <i class="fas fa-warehouse text-lg text-yellow-400"></i>
+                    </div>
+                    <div class="text-left">
+                        <div class="text-sm font-extrabold text-white">RAF TANIMLA</div>
+                        <div class="text-[10px] text-slate-400">QR Okutarak Yeni Raf Ekle</div>
+                    </div>
+                </div>
+                <i class="fas fa-chevron-right text-slate-600"></i>
+            </button>
 
             <div class="bg-[#1a1a1a] rounded-2xl border border-gray-800 p-4 shadow-xl">
                 <h3 class="text-xs font-bold text-slate-400 mb-3 uppercase flex justify-between items-center">
@@ -150,7 +163,7 @@
                 <div class="text-lg font-bold text-white tracking-widest">TARANIYOR</div>
             </div>
             
-            <div class="flex items-center gap-2 bg-black/60 backdrop-blur px-3 py-1 rounded-full border border-white/20">
+            <div id="rapid-toggle-container" class="flex items-center gap-2 bg-black/60 backdrop-blur px-3 py-1 rounded-full border border-white/20">
                 <span class="text-[10px] font-bold text-white">SERİ MOD</span>
                 <input type="checkbox" id="rapid-toggle" class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
             </div>
@@ -208,12 +221,36 @@
                 </div>
                 <div class="col-span-2">
                      <label class="text-[10px] text-slate-500 font-bold">RAF / KONUM</label>
-                     <input type="text" id="modal-shelf" placeholder="A-01" class="w-full bg-[#1a1a1a] border-b border-gray-600 p-1 text-xs text-white uppercase outline-none">
+                     <input type="text" id="modal-shelf" placeholder="Örn: A-01" class="w-full bg-[#1a1a1a] border-b border-gray-600 p-1 text-xs text-white uppercase outline-none">
                 </div>
             </div>
 
             <button onclick="saveProduct()" id="save-btn" class="w-full py-4 bg-blue-600 rounded-xl font-bold text-white shadow-lg mb-2 transition">KAYDET</button>
             <button onclick="closeModal()" class="w-full py-3 text-slate-500 font-bold text-xs hover:text-white transition">İPTAL</button>
+        </div>
+    </div>
+
+    <div id="shelf-modal" class="fixed inset-0 hidden bg-black/90 backdrop-blur flex items-center justify-center modal-layer p-6">
+        <div class="bg-[#1a1a1a] w-full max-w-sm rounded-2xl border border-yellow-600/50 shadow-2xl p-6">
+            <div class="w-12 h-12 bg-yellow-500/20 rounded-full flex items-center justify-center mb-4 mx-auto">
+                <i class="fas fa-warehouse text-2xl text-yellow-400"></i>
+            </div>
+            <h2 class="text-xl font-bold text-white text-center mb-1">Yeni Raf Tanımla</h2>
+            <p class="text-[10px] text-slate-400 text-center mb-6">Okutulan barkodu raf olarak sisteme kaydedin.</p>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="text-[10px] text-yellow-500 font-bold">RAF KODU (BARKODDAN)</label>
+                    <input type="text" id="shelf-code-input" class="w-full bg-black border border-gray-700 rounded p-3 text-white font-mono text-lg font-bold text-center outline-none focus:border-yellow-500 uppercase">
+                </div>
+                <div>
+                    <label class="text-[10px] text-slate-500 font-bold">AÇIKLAMA / İSİM (OPSİYONEL)</label>
+                    <input type="text" id="shelf-desc-input" placeholder="Örn: Sol Koridor 1. Raf" class="w-full bg-black border border-gray-700 rounded p-3 text-white text-sm outline-none focus:border-yellow-500">
+                </div>
+            </div>
+
+            <button onclick="saveShelf()" class="w-full py-3 bg-yellow-600 hover:bg-yellow-500 rounded-xl font-bold text-black mt-6 shadow-lg transition">RAFI KAYDET</button>
+            <button onclick="closeShelfModal()" class="w-full py-3 text-slate-500 font-bold text-xs mt-2 hover:text-white transition">İPTAL</button>
         </div>
     </div>
 
@@ -230,19 +267,26 @@
     </div>
 
       <script>
-        // --- ARC v12 ÇEKİRDEĞİ ---
-        const DB_KEY = 'arc_v12_lot_db';
-        let db = { products: {} }; 
+        // --- ARC v13 ÇEKİRDEĞİ ---
+        const DB_KEY = 'arc_v13_db';
+        // shelves eklendi
+        let db = { products: {}, shelves: {} }; 
         let html5QrCode;
         let scanMode = 'IN';
         let parsedData = null;
-        let currentStockView = 'shelf-list'; // 'shelf-list' (Varsayılan) veya 'shelf-details'
-        let currentShelfFilter = null; // showShelfDetails tarafından belirlenir
+        let currentStockView = 'shelf-list'; 
+        let currentShelfFilter = null; 
 
         function init() {
             try {
                 const d = localStorage.getItem(DB_KEY);
-                if(d) db = JSON.parse(d);
+                if(d) {
+                    let loaded = JSON.parse(d);
+                    db = loaded;
+                    // Eski versiyondan geçiş için kontrol
+                    if(!db.shelves) db.shelves = {};
+                    if(!db.products) db.products = {};
+                }
                 updateUI();
             } catch(e) { console.error(e); }
         }
@@ -257,8 +301,12 @@
         // --- GS1 PARSER ---
         function parseBarcode(text) {
             let res = { raw: text, gtin: "", lot: "NOLOT", ref: "", sn: "", exp: "", uniqueId: "" };
-            
             text = text.replace(/\s+/g, ' ').trim();
+            
+            // Eğer Raf Modundaysak sadece ham metni al, parse etmeye uğraşma
+            if(scanMode === 'SHELF') {
+                return { raw: text };
+            }
 
             if(text.includes(' ')) {
                 const parts = text.split(' ');
@@ -281,7 +329,6 @@
             if(res.ref) baseId = res.ref; 
             
             res.uniqueId = baseId + "_" + res.lot; 
-            
             return res;
         }
 
@@ -293,13 +340,20 @@
             
             const txt = document.getElementById('cam-mode');
             const laser = document.querySelector('.laser');
+            const rapidContainer = document.getElementById('rapid-toggle-container');
             
             if(mode === 'IN') {
                 txt.innerText = "GİRİŞ MODU"; txt.className = "text-[10px] text-emerald-400 font-bold";
                 laser.style.background = "#10b981"; laser.style.boxShadow = "0 0 15px #10b981";
-            } else {
+                rapidContainer.style.display = "flex";
+            } else if (mode === 'OUT') {
                 txt.innerText = "ÇIKIŞ MODU"; txt.className = "text-[10px] text-rose-400 font-bold";
                 laser.style.background = "#f43f5e"; laser.style.boxShadow = "0 0 15px #f43f5e";
+                rapidContainer.style.display = "flex";
+            } else if (mode === 'SHELF') {
+                txt.innerText = "RAF EKLEME"; txt.className = "text-[10px] text-yellow-400 font-bold";
+                laser.style.background = "#eab308"; laser.style.boxShadow = "0 0 15px #eab308";
+                rapidContainer.style.display = "none"; // Raf modunda seri okuma kapalı
             }
 
             html5QrCode = new Html5Qrcode("reader");
@@ -328,18 +382,26 @@
         // --- TARAMA MANTIĞI ---
         function onScan(decodedText) {
             try {
+                // Ses
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
                 const o = ctx.createOscillator(); const g = ctx.createGain();
                 o.connect(g); g.connect(ctx.destination);
                 o.type='square'; o.frequency.value=1200; g.gain.value=0.1;
                 o.start(); setTimeout(()=>o.stop(), 0.1);
 
+                // --- RAF MODU KONTROLÜ ---
+                if (scanMode === 'SHELF') {
+                    html5QrCode.pause();
+                    openShelfModal(decodedText);
+                    return;
+                }
+
+                // --- NORMAL ÜRÜN MODU ---
                 parsedData = parseBarcode(decodedText);
                 
                 const prod = db.products[parsedData.uniqueId];
                 const isRapid = document.getElementById('rapid-toggle').checked;
 
-                // SERİ MOD
                 if(isRapid && prod) {
                     if(parsedData.sn) {
                         const exists = prod.logs.find(l => l.sn === parsedData.sn);
@@ -356,12 +418,11 @@
                     return; 
                 }
 
-                // NORMAL MOD
                 html5QrCode.pause(); 
                 
                 if(prod && parsedData.sn) {
                     const exists = prod.logs.find(l => l.sn === parsedData.sn);
-                    if(scanMode === 'IN' && exists) { alert("BU ÜRÜN (BU LOTTA) ZATEN OKUTULDU!\nSN: " + parsedData.sn); html5QrCode.resume(); return; }
+                    if(scanMode === 'IN' && exists) { alert("BU ÜRÜN BU LOTTA ZATEN VAR!\nSN: " + parsedData.sn); html5QrCode.resume(); return; }
                     if(scanMode === 'OUT' && !exists) { alert("BU ÜRÜN BU LOTTA YOK!\nSN: " + parsedData.sn); html5QrCode.resume(); return; }
                 }
 
@@ -379,7 +440,40 @@
             }
         }
 
-        // --- MODAL ---
+        // --- RAF MODALI & KAYIT ---
+        function openShelfModal(shelfCode) {
+            document.getElementById('shelf-code-input').value = shelfCode.toUpperCase();
+            document.getElementById('shelf-desc-input').value = ""; // Her seferinde boşalt
+            
+            // Eğer bu raf zaten varsa açıklamasını getirebiliriz
+            if(db.shelves && db.shelves[shelfCode.toUpperCase()]) {
+                document.getElementById('shelf-desc-input').value = db.shelves[shelfCode.toUpperCase()].desc || "";
+            }
+            
+            document.getElementById('shelf-modal').classList.remove('hidden');
+        }
+
+        function closeShelfModal() {
+            document.getElementById('shelf-modal').classList.add('hidden');
+            stopScanner(); // İptal edince kamerayı kapat
+        }
+
+        function saveShelf() {
+            const code = document.getElementById('shelf-code-input').value.trim().toUpperCase();
+            const desc = document.getElementById('shelf-desc-input').value.trim();
+
+            if(!code) { alert("Raf kodu boş olamaz!"); return; }
+
+            // Veritabanına kaydet
+            db.shelves[code] = { id: code, desc: desc, created: new Date().toLocaleString() };
+            saveDB();
+            
+            closeShelfModal();
+            showToast("RAF TANIMLANDI", "bg-yellow-600");
+        }
+
+
+        // --- ÜRÜN MODALI ---
         function openModal(data, prod, suggestedName) {
             document.getElementById('modal-gtin').innerText = data.gtin || "---";
             document.getElementById('modal-lot').innerText = data.lot || "---";
@@ -421,16 +515,18 @@
                 const ref = document.getElementById('modal-ref').innerText;
                 const imgEl = document.getElementById('modal-img');
                 const imgSrc = (!imgEl.classList.contains('hidden')) ? imgEl.src : null;
+                const gtinVal = document.getElementById('modal-gtin').innerText;
 
                 if(!db.products[parsedData.uniqueId]) {
                     db.products[parsedData.uniqueId] = { 
                         id: parsedData.uniqueId, 
-                        name: name, shelf: shelf, ref: ref, lot: parsedData.lot, image: imgSrc, totalQty: 0, logs: [] 
+                        name: name, shelf: shelf, ref: ref, lot: parsedData.lot, image: imgSrc, totalQty: 0, logs: [], gtin: gtinVal 
                     };
                 }
                 let prod = db.products[parsedData.uniqueId];
                 prod.name = name; prod.shelf = shelf; 
                 if(ref !== "---") prod.ref = ref;
+                if(gtinVal !== "---") prod.gtin = gtinVal;
                 if(imgSrc) prod.image = imgSrc;
 
                 const entry = { sn: parsedData.sn, lot: parsedData.lot, ref: prod.ref, date: new Date().toLocaleString(), type: scanMode };
@@ -471,7 +567,7 @@
             
             if(liveArr.length === 0) { list.innerHTML = '<div class="text-center text-xs text-slate-500 pt-2">Aktif stokta ürün yok.</div>'; }
             else {
-                // Ana Sayfa Özeti: Lot/Ürün bazlı kalacak
+                // Ana Sayfa Özeti
                 list.innerHTML = liveArr.map(p => `
                     <div class="bg-black p-3 rounded-xl border border-gray-800 flex justify-between items-center transition hover:border-blue-500" onclick="showShelfDetails('${p.shelf || "RAFSIZ"}', true)">
                         <div class="flex items-center gap-3">
@@ -480,6 +576,7 @@
                             </div>
                             <div class="overflow-hidden">
                                 <div class="text-sm font-extrabold text-white truncate w-32">${p.name}</div>
+                                <div class="text-[9px] text-slate-500 font-mono mt-0.5"><i class="fas fa-barcode text-[9px] mr-1"></i>${p.gtin || '---'}</div>
                                 <div class="flex gap-2 mt-1">
                                     <span class="text-[10px] font-mono bg-blue-900/50 text-blue-200 px-1.5 rounded">${p.ref}</span>
                                     <span class="text-[10px] font-mono bg-yellow-900/50 text-yellow-200 px-1.5 rounded">${p.lot}</span>
@@ -495,16 +592,15 @@
             }
             
             if (document.getElementById('page-stocks').classList.contains('hidden') === false) {
-                 // Stoklar sekmesindeyken güncel görünümü koru
                  if (currentStockView === 'shelf-details') {
                      showShelfDetails(currentShelfFilter, false); 
                  } else {
-                     renderStocks(); // Raf Listesini çağırır
+                     renderStocks(); 
                  }
             }
         }
 
-        // --- YENİ TEMEL FONKSİYON: RAF LİSTESİ ---
+        // --- RAF LİSTESİ (TANIMLI RAFLARI DA GÖSTERECEK ŞEKİLDE GÜNCELLENDİ) ---
         function renderStocks() {
             currentStockView = 'shelf-list';
             currentShelfFilter = null;
@@ -513,94 +609,108 @@
             
             const grid = document.getElementById('stock-list'); if(!grid) return;
             const term = document.getElementById('search-input').value.toLowerCase();
-            const allProducts = Object.values(db.products).filter(p => p.totalQty > 0); // Sadece stokta olanları listele
+            const allProducts = Object.values(db.products).filter(p => p.totalQty > 0); 
+            
+            // 1. Tanımlı Rafları Al
+            const definedShelves = db.shelves || {};
 
-            // Raflara göre grupla ve toplam stok hesapla
+            // 2. Dolu rafları grupla
             const groupedByShelf = allProducts.reduce((acc, p) => {
                 const shelfKey = (p.shelf && p.shelf.trim() ? p.shelf.toUpperCase() : "RAFSIZ / TANIMSIZ");
-
-                // Arama filtresi: Raf adı veya raftaki ürün bilgileri
-                if (term === '' || shelfKey.toLowerCase().includes(term) ||
-                    p.name.toLowerCase().includes(term) || 
-                    p.lot.toLowerCase().includes(term) ||
-                    (p.ref && p.ref.toLowerCase().includes(term))) {
-                        
-                    if (!acc[shelfKey]) acc[shelfKey] = {
-                        totalQty: 0,
-                        productCount: new Set(),
-                        lotCount: 0,
-                        shelf: shelfKey
-                    };
-                    
-                    acc[shelfKey].totalQty += p.totalQty;
-                    acc[shelfKey].lotCount++;
-                    acc[shelfKey].productCount.add(p.ref); 
-                }
+                if (!acc[shelfKey]) acc[shelfKey] = { totalQty: 0, productCount: new Set(), lotCount: 0, shelf: shelfKey };
+                acc[shelfKey].totalQty += p.totalQty;
+                acc[shelfKey].lotCount++;
+                acc[shelfKey].productCount.add(p.ref); 
                 return acc;
             }, {});
 
-            let shelfHTML = '';
-            // Raf adlarına göre A-Z sırala
+            // 3. Tanımlı olup boş olan rafları da listeye ekle (eğer dolu değilse)
+            Object.values(definedShelves).forEach(s => {
+                if(!groupedByShelf[s.id]) {
+                    groupedByShelf[s.id] = { totalQty: 0, productCount: new Set(), lotCount: 0, shelf: s.id, isDefinedButEmpty: true };
+                }
+            });
+
+            // 4. Filtreleme ve HTML oluşturma
             const sortedShelves = Object.keys(groupedByShelf).sort();
-
-            if (sortedShelves.length === 0) {
-                 grid.innerHTML = `<div class="bg-gray-900 p-4 rounded-xl text-center text-slate-500">Hiçbir rafta ürün bulunamadı.</div>`;
-                 return;
-            }
-
-            // Raf Kartlarını oluştur
-            shelfHTML = sortedShelves.map(key => {
+            let shelfHTML = sortedShelves.map(key => {
                 const s = groupedByShelf[key];
+                
+                // Arama Filtresi
+                const matches = (term === '') || 
+                                key.toLowerCase().includes(term) ||
+                                (definedShelves[key] && definedShelves[key].desc.toLowerCase().includes(term));
+                
+                // Eğer ürünlerde arama yapıyorsa ve bu rafta o ürün varsa onu da dahil etmeliyiz (karmaşık olduğu için basit tutuyoruz: raf ismine bak)
+                if(!matches) return '';
+
+                const desc = definedShelves[key] ? definedShelves[key].desc : '';
+
                 return `
-                    <div class="bg-[#1a1a1a] rounded-xl border border-gray-700 p-4 shadow-md transition hover:border-blue-500 cursor-pointer" onclick="showShelfDetails('${s.shelf}', true)">
+                    <div class="bg-[#1a1a1a] rounded-xl border ${s.totalQty > 0 ? 'border-gray-700' : 'border-yellow-900/30'} p-4 shadow-md transition hover:border-blue-500 cursor-pointer" onclick="showShelfDetails('${s.shelf}', true)">
                         <div class="flex justify-between items-start">
-                            <h3 class="font-extrabold text-white text-xl flex items-center">
-                                <i class="fas fa-warehouse mr-2 text-indigo-400"></i> ${s.shelf}
-                            </h3>
-                            <span class="text-3xl font-extrabold text-blue-400">${s.totalQty}</span>
+                            <div>
+                                <h3 class="font-extrabold text-white text-xl flex items-center">
+                                    <i class="fas fa-warehouse mr-2 ${s.totalQty > 0 ? 'text-indigo-400' : 'text-slate-600'}"></i> ${s.shelf}
+                                </h3>
+                                ${desc ? `<div class="text-[10px] text-slate-500 mt-1 ml-6">${desc}</div>` : ''}
+                            </div>
+                            <span class="text-3xl font-extrabold ${s.totalQty > 0 ? 'text-blue-400' : 'text-slate-700'}">${s.totalQty}</span>
                         </div>
                         <div class="mt-2 text-sm text-slate-400 font-bold">
-                            <span class="mr-3 text-yellow-400">${s.productCount.size} Çeşit Ürün</span>
-                            <span class="mr-3 text-emerald-400">${s.lotCount} Lot</span>
+                            ${s.totalQty > 0 ? 
+                                `<span class="mr-3 text-yellow-400">${s.productCount.size} Çeşit</span>
+                                 <span class="mr-3 text-emerald-400">${s.lotCount} Lot</span>` 
+                                : '<span class="text-slate-600 italic">Raf Boş</span>'}
                         </div>
                     </div>
                 `;
             }).join('');
-            
-            grid.innerHTML = shelfHTML;
+
+            if (shelfHTML === '') {
+                 grid.innerHTML = `<div class="bg-gray-900 p-4 rounded-xl text-center text-slate-500">Hiçbir raf bulunamadı.</div>`;
+            } else {
+                grid.innerHTML = shelfHTML;
+            }
         }
 
-        // --- RAF İÇİ DETAY GÖRÜNÜMÜ ---
         function showShelfDetails(shelfKey, switchView = true) {
             currentStockView = 'shelf-details';
             currentShelfFilter = shelfKey;
             
-            document.getElementById('stock-title').innerHTML = `<i class="fas fa-box-open text-blue-400 mr-2"></i> RAF: ${shelfKey} İÇERİĞİ`;
+            let shelfDesc = "";
+            if(db.shelves && db.shelves[shelfKey]) shelfDesc = db.shelves[shelfKey].desc;
+
+            document.getElementById('stock-title').innerHTML = `
+                <div class="flex flex-col">
+                    <span><i class="fas fa-box-open text-blue-400 mr-2"></i> ${shelfKey}</span>
+                    ${shelfDesc ? `<span class="text-[10px] text-slate-400 font-normal">${shelfDesc}</span>` : ''}
+                </div>`;
             document.getElementById('back-to-list').classList.remove('hidden');
             
             const grid = document.getElementById('stock-list');
             const term = document.getElementById('search-input').value.toLowerCase();
             const allProducts = Object.values(db.products);
 
-            // Sadece bu rafa ait ve arama filtresine uyan ürünleri al
             const shelfProducts = allProducts.filter(p => 
                 (p.shelf ? p.shelf.toUpperCase() : "RAFSIZ / TANIMSIZ") === shelfKey &&
                 (p.name.toLowerCase().includes(term) || 
                  p.lot.toLowerCase().includes(term) ||
+                 (p.gtin && p.gtin.includes(term)) ||
                  (p.ref && p.ref.toLowerCase().includes(term)))
-            ).sort((a,b) => a.name.localeCompare(b.name)); // Ürün ismine göre A-Z sırala
+            ).sort((a,b) => a.name.localeCompare(b.name));
 
             if (shelfProducts.length === 0) {
-                 grid.innerHTML = `<div class="bg-gray-900 p-4 rounded-xl text-center text-slate-500">Bu rafta (veya aramanıza uygun) aktif ürün bulunamadı.</div>`;
+                 grid.innerHTML = `<div class="bg-gray-900 p-4 rounded-xl text-center text-slate-500">Bu rafta aktif ürün yok.</div>`;
                  return;
             }
 
-            // RAF İÇİ LİSTE GÖRÜNÜMÜ (Lot Bazlı)
             grid.innerHTML = shelfProducts.map(p => `
                 <div class="bg-[#1a1a1a] rounded-xl border border-gray-800 overflow-hidden shadow-md">
                     <div class="p-3 border-b border-gray-700 flex justify-between bg-gray-900 items-center">
                         <div>
                             <span class="font-bold text-sm text-white block">${p.name}</span>
+                            <div class="text-[10px] text-slate-500 font-mono flex items-center mt-1"><i class="fas fa-barcode mr-1"></i> ${p.gtin || '---'}</div>
                             <div class="flex gap-2 mt-1 items-center">
                                 <span class="lot-tag">${p.lot}</span>
                                 <span class="text-[10px] text-slate-400 font-bold self-center">REF: ${p.ref}</span>
@@ -622,21 +732,18 @@
                 switchPage('stocks');
             }
         }
-        
-        // Bu fonksiyona artık ihtiyaç kalmadı, silinmiştir.
-        // function generateProductCard(p) { ... }
-
 
         function showToast(msg = "KAYDEDİLDİ", bgClass = "bg-emerald-600") {
             const t = document.getElementById('toast');
             document.getElementById('toast-text').innerText = msg;
             t.className = ""; t.classList.add(bgClass.replace('bg-', '')); 
-            t.style.backgroundColor = bgClass === "bg-red-600" ? "rgba(220, 38, 38, 0.9)" : "rgba(16, 185, 129, 0.9)";
+            t.style.backgroundColor = bgClass === "bg-red-600" ? "rgba(220, 38, 38, 0.9)" : 
+                                      bgClass === "bg-yellow-600" ? "rgba(202, 138, 4, 0.9)" : "rgba(16, 185, 129, 0.9)";
             t.classList.add('show');
             setTimeout(() => t.classList.remove('show'), 1500);
         }
 
-        function resetData() { if(confirm("Tüm veriler silinecek!")) { localStorage.removeItem(DB_KEY); db = { products: {} }; updateUI(); } }
+        function resetData() { if(confirm("Tüm veriler silinecek!")) { localStorage.removeItem(DB_KEY); db = { products: {}, shelves: {} }; updateUI(); } }
         function openSettings() { document.getElementById('settings-modal').classList.remove('hidden'); }
         
         function switchPage(page) {
@@ -653,11 +760,10 @@
                 targetPage = document.getElementById('page-stocks'); 
                 targetButton = document.querySelectorAll('.nav-btn')[1]; 
                 
-                // Stoklar sekmesine geçiş yapıldığında doğru görünümü yükle
                 if (currentStockView === 'shelf-details') {
                      showShelfDetails(currentShelfFilter, false); 
                 } else {
-                     renderStocks(); // Temel Raf Listesini yükle
+                     renderStocks(); 
                 }
             } else {
                  if(page === 'share') { shareWhatsApp(); targetButton = document.querySelectorAll('.nav-btn')[2]; }
@@ -669,11 +775,11 @@
 
         function backupData() {
             const d = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
-            const a = document.createElement('a'); a.href = d; a.download = 'ARC_Yedek.json'; a.click();
+            const a = document.createElement('a'); a.href = d; a.download = 'ARC_Yedek_v13.json'; a.click();
         }
         function exportExcel() {
             let csv = "GTIN;URUN;REF;LOT;RAF;ISLEM;SN;TARIH\n";
-            Object.values(db.products).forEach(p => { p.logs.forEach(l => { csv += `${p.id};${p.name};${p.ref};${p.lot};${p.shelf};${l.type};${l.sn};${l.date}\n`; }); });
+            Object.values(db.products).forEach(p => { p.logs.forEach(l => { csv += `${p.gtin || p.id};${p.name};${p.ref};${p.lot};${p.shelf};${l.type};${l.sn};${l.date}\n`; }); });
             const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = 'Rapor.csv'; a.click();
         }
