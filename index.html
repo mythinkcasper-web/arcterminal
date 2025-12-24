@@ -3,813 +3,551 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARC v14 Pro</title>
-    
+    <title>Stok Terminal Pro V5</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-
     <style>
-        /* TEMEL & RESET */
-        body { background-color: #050505; color: #e5e5e5; height: 100vh; overflow: hidden; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-        .font-mono { font-family: 'JetBrains Mono', monospace; }
-        
-        /* KAYDIRARAK SİLME (SWIPE TO DELETE) */
-        .swipe-wrapper {
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #3b82f6;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: #f1f5f9;
+            height: 100vh;
             display: flex;
-            overflow-x: auto;
-            scroll-snap-type: x mandatory;
-            scrollbar-width: none; /* Firefox */
-            border-radius: 12px;
-        }
-        .swipe-wrapper::-webkit-scrollbar { display: none; } /* Chrome/Safari */
-        
-        .swipe-content {
-            min-width: 100%;
-            scroll-snap-align: start;
-            background: #121212;
-            transition: background 0.2s;
-        }
-        
-        .swipe-action {
-            min-width: 80px;
-            scroll-snap-align: end;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #dc2626;
-            color: white;
-            font-weight: bold;
-            font-size: 1.2rem;
+            flex-direction: column;
+            overflow: hidden;
+            user-select: none; /* Metin seçimini engelle (hız için) */
         }
 
-        /* DİĞER STİLLER */
-        #scanner-container { position: fixed; inset: 0; z-index: 50; background: #000; display: none; }
-        #reader { width: 100%; height: 100%; }
-        #reader video { object-fit: cover !important; width: 100% !important; height: 100% !important; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* Listeleme Alanı Scroll */
+        #inventory-container {
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+        /* Kart Stilleri */
+        .item-card {
+            transition: transform 0.1s, background-color 0.2s;
+            border-left: 5px solid #475569; /* Varsayılan Gri */
+        }
         
-        .modal-layer { z-index: 200 !important; }
+        .item-card:active { transform: scale(0.98); }
+
+        /* Durum Renkleri */
+        .status-ok { border-left-color: #22c55e; background: rgba(34, 197, 94, 0.08); } /* Yeşil */
+        .status-error { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.15); } /* Kırmızı/Fazla */
+        .status-process { border-left-color: #eab308; background: rgba(234, 179, 8, 0.05); } /* Sarı/Devam */
         
-        /* VİZÖR VE ANİMASYONLAR */
-        .scan-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 60; background: rgba(0, 0, 0, 0.6); -webkit-mask: radial-gradient(transparent 140px, black 141px); mask: radial-gradient(transparent 140px, black 141px); }
-        .focus-box { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 280px; height: 280px; border: 2px solid rgba(255,255,255,0.3); border-radius: 20px; z-index: 70; }
-        .laser { position: absolute; top: 50%; left: 5%; width: 90%; height: 2px; background: #ef4444; box-shadow: 0 0 15px #ef4444; animation: scan 2s infinite ease-in-out; }
-        @keyframes scan { 0%, 100% { top: 10%; opacity: 0; } 50% { opacity: 1; } 100% { top: 90%; opacity: 0; } }
+        /* Son Okunan Vurgusu */
+        .last-scanned {
+            border: 2px solid #3b82f6;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+            z-index: 10;
+        }
 
-        /* INPUT RANGE */
-        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #fff; margin-top: -8px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
-        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px; }
+        /* Input Alanı */
+        .scanner-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+        }
 
-        /* TOAST */
-        #toast { position: fixed; top: 15%; left: 50%; transform: translate(-50%, -50%) scale(0.9); background: rgba(16, 185, 129, 0.95); padding: 12px 24px; border-radius: 30px; color: white; font-weight: bold; font-size: 0.9rem; z-index: 300; display: none; align-items: center; gap: 10px; opacity: 0; transition: all 0.2s; pointer-events: none; white-space: nowrap; }
-        #toast.show { display: flex; opacity: 1; transform: translate(-50%, -50%) scale(1); }
-
-        .nav-btn.active { color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
-        .nav-btn:not(.active) { color: #525252; }
-
-        /* TOGGLE SWITCH */
-        .toggle-checkbox:checked { right: 0; border-color: #10b981; }
-        .toggle-checkbox:checked + .toggle-label { background-color: #10b981; }
+        .modal-bg { background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); }
     </style>
 </head>
-<body class="flex flex-col h-full bg-black text-gray-100">
+<body>
 
-    <header class="bg-black/90 backdrop-blur-md border-b border-white/10 h-14 flex justify-between items-center px-4 z-20 sticky top-0">
-        <div class="flex items-center gap-2">
-            <i class="fas fa-cube text-indigo-500 text-lg"></i>
-            <h1 class="font-extrabold text-white text-base tracking-wide">ARC<span class="text-indigo-500">v14</span></h1>
+    <!-- ÜST BAR: Özet Bilgi -->
+    <header class="bg-slate-800 border-b border-slate-700 p-3 shadow-xl z-30 flex flex-col gap-2">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <i class="fa-solid fa-barcode text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-white font-bold text-lg leading-none tracking-tight">STOK MİZAN</h1>
+                    <div class="text-[10px] text-slate-400 font-mono mt-1">TERMİNAL MODU</div>
+                </div>
+            </div>
+            
+            <div class="flex gap-2">
+                <!-- CSV Yükle Butonu -->
+                <button onclick="document.getElementById('csvInput').click()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-2 rounded-lg text-xs font-bold border border-slate-600 transition flex items-center gap-2">
+                    <i class="fa-solid fa-file-import"></i> <span class="hidden sm:inline">Liste Yükle</span>
+                </button>
+                <!-- Rapor Al Butonu -->
+                <button onclick="exportCSV()" class="bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-lg shadow-green-900/20 transition flex items-center gap-2">
+                    <i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Rapor</span>
+                </button>
+            </div>
         </div>
-        <button onclick="openSettings()" class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition">
-            <i class="fas fa-sliders-h text-sm"></i>
-        </button>
+
+        <!-- İstatistik Çubuğu -->
+        <div class="flex rounded-md overflow-hidden text-center text-xs font-mono font-bold border border-slate-700">
+            <div class="bg-slate-900 text-slate-400 py-1.5 flex-1 border-r border-slate-700">
+                TOPLAM: <span id="stat-total" class="text-white text-sm">0</span>
+            </div>
+            <div class="bg-slate-900 text-slate-400 py-1.5 flex-1 border-r border-slate-700">
+                SAYILAN: <span id="stat-counted" class="text-yellow-400 text-sm">0</span>
+            </div>
+            <div class="bg-slate-900 text-slate-400 py-1.5 flex-1">
+                KALAN: <span id="stat-remaining" class="text-red-400 text-sm">0</span>
+            </div>
+        </div>
     </header>
 
-    <main class="flex-1 overflow-y-auto relative no-scrollbar pb-20">
-        
-        <div id="page-home" class="p-4 space-y-6">
-            
-            <div class="grid grid-cols-2 gap-3">
-                <button onclick="startScanner('IN')" class="bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] active:scale-[.98] transition p-5 rounded-2xl border border-emerald-900/50 shadow-lg relative group overflow-hidden">
-                    <div class="absolute inset-0 bg-emerald-500/5 group-hover:bg-emerald-500/10 transition"></div>
-                    <div class="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center mb-3">
-                        <i class="fas fa-arrow-down text-emerald-400"></i>
-                    </div>
-                    <div class="text-left">
-                        <div class="text-sm font-bold text-white">GİRİŞ</div>
-                        <div class="text-[10px] text-emerald-500/70">Stok Ekle</div>
-                    </div>
-                </button>
-                
-                <button onclick="startScanner('OUT')" class="bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] active:scale-[.98] transition p-5 rounded-2xl border border-rose-900/50 shadow-lg relative group overflow-hidden">
-                    <div class="absolute inset-0 bg-rose-500/5 group-hover:bg-rose-500/10 transition"></div>
-                    <div class="w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center mb-3">
-                        <i class="fas fa-arrow-up text-rose-400"></i>
-                    </div>
-                    <div class="text-left">
-                        <div class="text-sm font-bold text-white">ÇIKIŞ</div>
-                        <div class="text-[10px] text-rose-500/70">Stok Düş</div>
-                    </div>
-                </button>
-
-                <button onclick="startScanner('SHELF')" class="col-span-2 bg-gradient-to-r from-[#1a1a1a] to-[#222] active:scale-[.99] transition p-4 rounded-2xl border border-yellow-900/40 shadow-lg flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
-                            <i class="fas fa-warehouse text-yellow-400"></i>
-                        </div>
-                        <div class="text-left">
-                            <div class="text-sm font-bold text-white">RAF TANIMLA</div>
-                            <div class="text-[10px] text-slate-400">QR ile Konum Ekle</div>
-                        </div>
-                    </div>
-                    <i class="fas fa-plus text-yellow-600/50"></i>
-                </button>
+    <!-- SCANNER ALANI (SABİT) -->
+    <div class="p-3 bg-slate-800/95 backdrop-blur border-b border-slate-700 sticky top-0 z-20 shadow-lg">
+        <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fa-solid fa-qrcode text-slate-500 text-xl"></i>
             </div>
-
-            <div>
-                <div class="flex justify-between items-center mb-3 px-1">
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Son Hareketler / Özet</h3>
-                    <span id="total-badge" class="bg-white/10 text-white px-2 py-0.5 rounded text-[10px]">0 Parti</span>
-                </div>
-                <div id="summary-list" class="space-y-3 pb-4">
-                     </div>
+            <input 
+                type="text" 
+                id="barcodeInput" 
+                placeholder="Barkodu okut..." 
+                class="scanner-input w-full bg-slate-900 text-white text-xl font-mono pl-10 pr-4 py-3 rounded-xl border border-slate-600 outline-none transition-all placeholder-slate-600"
+                autocomplete="off"
+                spellcheck="false"
+            >
+            <div class="absolute inset-y-0 right-2 flex items-center">
+                 <button onclick="clearInput()" class="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                 </button>
             </div>
         </div>
+        <!-- Durum Mesajı -->
+        <div id="status-msg" class="text-center text-xs font-bold mt-1 h-4 text-slate-500 transition-colors">Hazır, bekliyor...</div>
+    </div>
 
-        <div id="page-stocks" class="hidden p-4 space-y-4">
-            <div id="stock-header" class="flex items-center gap-3 sticky top-0 z-10 bg-black py-2">
-                <button id="back-to-list" onclick="renderStocks()" class="w-8 h-8 bg-white/10 text-white rounded-full flex items-center justify-center hidden active:bg-white/20"><i class="fas fa-chevron-left text-xs"></i></button>
-                <h2 id="stock-title" class="text-lg font-bold text-white">Stoklar</h2>
-            </div>
-            
-            <div class="relative">
-                <i class="fas fa-search absolute left-4 top-3.5 text-slate-500 text-sm"></i>
-                <input type="text" id="search-input" onkeyup="renderStocks()" placeholder="Ara (İsim, GTIN, Raf)..." class="w-full bg-[#121212] border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm outline-none text-white focus:border-indigo-500 transition">
-            </div>
-            
-            <div id="stock-list" class="flex flex-col gap-3 pb-24"></div>
-        </div>
+    <!-- LİSTE ALANI -->
+    <main id="inventory-container" class="flex-1 overflow-y-auto p-2 bg-slate-900 pb-24">
+        <!-- JS ile dolacak -->
     </main>
 
-    <nav class="fixed bottom-0 left-0 right-0 bg-[#0a0a0a]/95 backdrop-blur-lg border-t border-white/5 h-16 flex z-30 justify-around items-center px-2">
-        <button onclick="switchPage('home')" class="nav-btn active flex flex-col items-center p-2 w-16 transition duration-200">
-            <i class="fas fa-home text-lg mb-1"></i>
-            <span class="text-[9px] font-bold">ANA</span>
-        </button>
-        <button onclick="switchPage('stocks')" class="nav-btn flex flex-col items-center p-2 w-16 transition duration-200">
-            <i class="fas fa-box text-lg mb-1"></i>
-            <span class="text-[9px] font-bold">STOK</span>
-        </button>
-        <button onclick="shareWhatsApp()" class="nav-btn flex flex-col items-center p-2 w-16 transition duration-200">
-            <i class="fab fa-whatsapp text-lg mb-1"></i>
-            <span class="text-[9px] font-bold">PAYLAŞ</span>
-        </button>
-    </nav>
+    <!-- MANUEL GİRİŞ BUTONU (MOBİL) -->
+    <button onclick="focusInput()" class="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 hover:bg-blue-500 rounded-full shadow-2xl shadow-blue-500/50 flex items-center justify-center text-white z-40 md:hidden active:scale-90 transition-transform">
+        <i class="fa-solid fa-keyboard text-xl"></i>
+    </button>
 
-    <div id="scanner-container">
-        <div id="reader"></div>
-        <div class="scan-overlay"></div>
-        <div class="focus-box"><div class="laser"></div></div>
-        
-        <div class="absolute top-6 left-0 w-full flex justify-center z-[100]">
-            <div class="bg-black/70 backdrop-blur px-4 py-2 rounded-full border border-white/10 flex items-center gap-3">
-                <div class="w-2 h-2 rounded-full" id="mode-indicator"></div>
-                <span class="text-xs font-bold text-white tracking-widest" id="cam-mode-text">MOD</span>
-            </div>
-        </div>
+    <!-- GİZLİ INPUT -->
+    <input type="file" id="csvInput" class="hidden" accept=".csv" onchange="handleFileUpload(this)">
 
-        <button onclick="stopScanner()" class="absolute top-6 right-6 w-10 h-10 bg-black/50 rounded-full flex items-center justify-center text-white z-[100] backdrop-blur"><i class="fas fa-times"></i></button>
+    <!-- MODAL: EŞLEŞTİRME -->
+    <div id="link-modal" class="modal-bg fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 rounded-2xl w-full max-w-md border border-slate-600 shadow-2xl flex flex-col max-h-[80vh]">
+            <div class="p-4 border-b border-slate-700 bg-slate-800 rounded-t-2xl">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-link text-yellow-500"></i> Barkod Tanımla
+                    </h3>
+                    <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+                </div>
+                
+                <div class="bg-slate-900 p-3 rounded border border-slate-700 text-center mb-4">
+                    <div class="text-[10px] text-slate-500 uppercase tracking-wider">OKUNAN BARKOD</div>
+                    <div id="modal-barcode-display" class="text-2xl font-bold text-white mono mt-1 select-all"></div>
+                </div>
 
-        <div class="absolute bottom-24 left-0 w-full px-6 z-[100] flex flex-col gap-4">
-            <div id="rapid-toggle-container" class="self-center flex items-center gap-3 bg-black/60 px-4 py-2 rounded-full border border-white/10">
-                <span class="text-[10px] font-bold text-slate-300">SERİ TARAMA</span>
-                <div class="relative inline-block w-8 h-4 align-middle select-none transition duration-200 ease-in">
-                    <input type="checkbox" id="rapid-toggle" class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 ease-in-out left-0"/>
-                    <label class="toggle-label block overflow-hidden h-4 rounded-full bg-gray-600 cursor-pointer"></label>
+                <div class="relative">
+                    <i class="fa-solid fa-search absolute left-3 top-3.5 text-slate-500"></i>
+                    <input type="text" id="modal-search" placeholder="Stok Kodu veya İsim Ara..." class="w-full bg-slate-900 border border-slate-600 rounded-lg pl-10 p-3 text-white focus:border-blue-500 outline-none">
                 </div>
             </div>
             
-            <div class="bg-black/60 backdrop-blur rounded-xl p-3 border border-white/10">
-                <input type="range" id="zoom-slider" min="1" max="5" step="0.1" value="1" oninput="applyZoom(this.value)">
+            <div id="modal-list" class="flex-1 overflow-y-auto p-2 space-y-2 bg-slate-900">
+                <!-- Arama sonuçları -->
             </div>
         </div>
     </div>
-
-    <div id="product-modal" class="fixed inset-0 hidden bg-black/90 backdrop-blur flex items-end sm:items-center justify-center modal-layer z-[200]">
-        <div class="bg-[#151515] w-full sm:w-[450px] rounded-t-2xl sm:rounded-2xl border-t border-white/10 shadow-2xl p-6 max-h-[90vh] overflow-y-auto anim-up">
-            <div class="flex gap-4 mb-5">
-                <div class="w-20 h-20 bg-gray-800 rounded-lg overflow-hidden border border-white/5 relative group">
-                    <img id="modal-img" src="" class="w-full h-full object-cover hidden">
-                    <div id="modal-no-img" class="w-full h-full flex items-center justify-center text-slate-600"><i class="fas fa-camera"></i></div>
-                    <input type="file" accept="image/*" capture="environment" class="absolute inset-0 opacity-0 cursor-pointer z-10" onchange="handlePhoto(this)">
-                </div>
-                <div class="flex-1">
-                    <label class="text-[10px] text-slate-500 font-bold mb-1 block">ÜRÜN ADI</label>
-                    <input type="text" id="modal-name" class="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg p-2.5 text-white text-sm outline-none focus:border-indigo-500 transition">
-                </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3 mb-5">
-                <div class="bg-[#0a0a0a] p-2 rounded border border-white/5">
-                    <div class="text-[9px] text-slate-500 font-bold">REF NO</div>
-                    <div class="text-xs font-mono text-white font-bold truncate" id="modal-ref">---</div>
-                </div>
-                <div class="bg-[#0a0a0a] p-2 rounded border border-white/5">
-                    <div class="text-[9px] text-slate-500 font-bold">LOT NO</div>
-                    <div class="text-xs font-mono text-yellow-400 font-bold truncate" id="modal-lot">---</div>
-                </div>
-                 <div class="bg-[#0a0a0a] p-2 rounded border border-white/5">
-                    <div class="text-[9px] text-slate-500 font-bold">SKT</div>
-                    <div class="text-xs font-mono text-white truncate" id="modal-exp">---</div>
-                </div>
-                 <div class="bg-[#0a0a0a] p-2 rounded border border-white/5">
-                    <div class="text-[9px] text-slate-500 font-bold">SERİ NO (SN)</div>
-                    <div class="text-xs font-mono text-emerald-400 truncate" id="modal-sn">---</div>
-                </div>
-                <div class="col-span-2">
-                    <label class="text-[10px] text-slate-500 font-bold mb-1 block">GTIN (BARKOD)</label>
-                    <div class="text-xs font-mono text-slate-300 bg-[#0a0a0a] p-2 rounded border border-white/5" id="modal-gtin">---</div>
-                </div>
-                <div class="col-span-2">
-                     <label class="text-[10px] text-indigo-400 font-bold mb-1 block">RAF KONUMU</label>
-                     <input type="text" id="modal-shelf" placeholder="Örn: A-01" class="w-full bg-[#0a0a0a] border border-indigo-900/40 p-3 rounded-lg text-sm text-white uppercase outline-none focus:border-indigo-500">
-                </div>
-            </div>
-
-            <button onclick="saveProduct()" id="save-btn" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-white shadow-lg shadow-indigo-900/20 mb-3 transition">KAYDET</button>
-            <button onclick="closeModal()" class="w-full py-3 text-slate-400 font-bold text-xs hover:text-white transition">İPTAL</button>
-        </div>
-    </div>
-
-    <div id="shelf-modal" class="fixed inset-0 hidden bg-black/90 backdrop-blur flex items-center justify-center modal-layer p-6 z-[200]">
-        <div class="bg-[#151515] w-full max-w-sm rounded-2xl border border-yellow-600/30 shadow-2xl p-6">
-            <div class="w-12 h-12 bg-yellow-500/10 rounded-full flex items-center justify-center mb-4 mx-auto border border-yellow-500/20">
-                <i class="fas fa-warehouse text-2xl text-yellow-400"></i>
-            </div>
-            <h2 class="text-lg font-bold text-white text-center mb-1">Raf Tanımla</h2>
-            <p class="text-[10px] text-slate-400 text-center mb-6">Bu QR kodu raf konumu olarak kaydedilecek.</p>
-            
-            <div class="space-y-4">
-                <input type="text" id="shelf-code-input" readonly class="w-full bg-black border border-gray-700 rounded-lg p-3 text-white font-mono text-lg font-bold text-center uppercase text-yellow-500">
-                <input type="text" id="shelf-desc-input" placeholder="Açıklama (Örn: Koridor 1)" class="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg p-3 text-white text-sm outline-none focus:border-yellow-500">
-            </div>
-
-            <button onclick="saveShelf()" class="w-full py-3 bg-yellow-600 hover:bg-yellow-500 rounded-xl font-bold text-black mt-6 transition">RAFI KAYDET</button>
-            <button onclick="closeShelfModal()" class="w-full py-3 text-slate-500 font-bold text-xs mt-2 hover:text-white transition">İPTAL</button>
-        </div>
-    </div>
-
-    <div id="settings-modal" class="fixed inset-0 hidden bg-black/90 backdrop-blur flex items-center justify-center modal-layer p-6 z-[210]">
-        <div class="bg-[#151515] rounded-2xl p-6 w-full max-w-sm border border-gray-800">
-            <h3 class="font-bold text-white mb-6 text-lg border-b border-gray-800 pb-2">Ayarlar</h3>
-            
-            <div class="flex items-center justify-between mb-6">
-                <span class="text-sm text-slate-300">GTIN (Barkod) Göster</span>
-                <div class="relative inline-block w-10 h-5 align-middle select-none transition duration-200 ease-in">
-                    <input type="checkbox" id="setting-show-gtin" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 ease-in-out left-0" onchange="toggleGtinSetting()"/>
-                    <label for="setting-show-gtin" class="toggle-label block overflow-hidden h-5 rounded-full bg-gray-700 cursor-pointer"></label>
-                </div>
-            </div>
-
-            <button onclick="backupData()" class="w-full py-3 bg-[#222] rounded-xl font-bold text-white text-sm mb-2 hover:bg-[#333] transition flex items-center justify-center gap-2"><i class="fas fa-download"></i> Yedek İndir (JSON)</button>
-            <button onclick="exportExcel()" class="w-full py-3 bg-[#222] rounded-xl font-bold text-white text-sm mb-2 hover:bg-[#333] transition flex items-center justify-center gap-2"><i class="fas fa-file-excel"></i> Rapor İndir (Excel)</button>
-            <button onclick="resetData()" class="w-full py-3 text-red-400 border border-red-900/30 rounded-xl font-bold text-sm mb-4 hover:bg-red-900/20 transition">Verileri Sıfırla</button>
-            
-            <button onclick="document.getElementById('settings-modal').classList.add('hidden')" class="w-full py-3 bg-indigo-600 rounded-xl text-white font-bold transition">Kapat</button>
-        </div>
-    </div>
-
-    <div id="delete-modal" class="fixed inset-0 hidden bg-black/80 backdrop-blur flex items-center justify-center modal-layer p-8 z-[220]">
-        <div class="bg-[#1a1a1a] rounded-2xl p-6 w-full max-w-xs border border-red-900/50 text-center">
-            <div class="w-14 h-14 bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500 text-2xl"><i class="fas fa-trash"></i></div>
-            <h3 class="text-white font-bold text-lg mb-2">Emin misiniz?</h3>
-            <p class="text-slate-400 text-xs mb-6">Bu öğe kalıcı olarak silinecek ve geri alınamayacak.</p>
-            <div class="flex gap-3">
-                <button onclick="closeDeleteModal()" class="flex-1 py-2 rounded-lg bg-gray-800 text-white text-sm font-bold">Vazgeç</button>
-                <button id="confirm-delete-btn" class="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-bold">SİL</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="toast"><i class="fas fa-check-circle"></i><span id="toast-text">İşlem Başarılı</span></div>
 
     <script>
-        // --- ARC SİSTEMİ ÇEKİRDEĞİ ---
-        const DB_KEY = 'arc_v14_db';
-        const SETTINGS_KEY = 'arc_v14_settings';
-        
-        let db = { products: {}, shelves: {} };
-        let settings = { showGtin: false };
-        
-        let html5QrCode;
-        let scanMode = 'IN';
-        let parsedData = null;
-        let currentStockView = 'shelf-list'; 
-        let currentShelfFilter = null; 
-        let deleteTarget = null; // { type: 'product'|'shelf', id: '...' }
+        // --- SES EFEKTLERİ ---
+        const playBeep = (type) => {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            if(type === 'success') { // İnce Bip
+                osc.type = 'sine';
+                osc.frequency.value = 1000;
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.1);
+            } else if(type === 'error') { // Kalın Düt
+                osc.type = 'sawtooth';
+                osc.frequency.value = 200;
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.3);
+            } else if(type === 'complete') { // Çift Bip
+                osc.type = 'square';
+                osc.frequency.value = 800;
+                gain.gain.setValueAtTime(0.05, ctx.currentTime);
+                osc.start();
+                setTimeout(() => osc.frequency.value = 1200, 100);
+                osc.stop(ctx.currentTime + 0.2);
+            }
+        };
+
+        // --- GÖMÜLÜ VERİ (SENİN LİSTEN) ---
+        const embeddedData = [
+            {code:"MH-013",name:"ALKALİN FOSFATAZ (ALP ) (280 TEST)",target:4,date:"05.08.2027",lot:"017",loc:"Sevkiyat Depo | G | 11 | 1"},
+            {code:"MH-102",name:"LDL KOLESTEROL (280 TEST)",target:2,date:"18.12.2026",lot:"053",loc:"Sevkiyat Depo | G | 11 | 1"},
+            {code:"MH-213",name:"LİPAZ (282 TEST)",target:1,date:"18.05.2027",lot:"009",loc:"Sevkiyat Depo | G | 11 | 1"},
+            {code:"MH-343",name:"CRP TURBİ WR (310 TEST)",target:3,date:"06.08.2026",lot:"406",loc:"Sevkiyat Depo | G | 11 | 1"},
+            {code:"MH-363",name:"RF TÜRBİDİMETRİK (282 TEST)",target:2,date:"21.04.2027",lot:"886",loc:"Sevkiyat Depo | G | 11 | 1"},
+            {code:"MH-483",name:"LDH DGKC (216 TEST)",target:2,date:"30.08.2028",lot:"810",loc:"Sevkiyat Depo | G | 11 | 1"},
+            {code:"VT-010",name:"SPESİFİK PROTEİN KONTROL SEVİYE 2( 5 x 1 mL )",target:5,date:"15.10.2027",lot:"019",loc:"Sevkiyat Depo | G | 11 | 1"},
+            {code:"MH-222",name:"MAGNEZYUM (700 TEST)",target:1,date:"03.03.2028",lot:"324",loc:"Sevkiyat Depo | G | 15 | 1"},
+            {code:"MH-272",name:"TRİGLİSERİT (884 TEST)",target:5,date:"25.10.2026",lot:"300",loc:"Sevkiyat Depo | G | 15 | 1"},
+            {code:"MH-282",name:"UIBC (350 TEST)",target:1,date:"01.04.2027",lot:"907",loc:"Sevkiyat Depo | G | 15 | 1"},
+            {code:"MH-302",name:"ÜRİK ASİT (350 TEST)",target:11,date:"29.03.2027",lot:"842",loc:"Sevkiyat Depo | G | 15 | 1"},
+            {code:"MH-442",name:"SODYUM (230 TEST)",target:2,date:"30.03.2026",lot:"012",loc:"Sevkiyat Depo | G | 15 | 1"},
+            {code:"MH-462",name:"KLORÜR (236 TEST)",target:1,date:"30.03.2030",lot:"756",loc:"Sevkiyat Depo | G | 15 | 1"},
+            {code:"MH-482",name:"LDH DGKC (326 TEST)",target:1,date:"30.08.2028",lot:"810",loc:"Sevkiyat Depo | G | 15 | 1"}
+        ];
+
+        // --- STATE ---
+        let inventory = [];
+        let barcodeMap = {}; // EAN -> StockCode
+        let lastScanned = null;
+        let tempBarcode = "";
 
         // --- BAŞLANGIÇ ---
         function init() {
-            try {
-                const d = localStorage.getItem(DB_KEY);
-                if(d) {
-                    db = JSON.parse(d);
-                    if(!db.shelves) db.shelves = {};
-                    if(!db.products) db.products = {};
-                }
-                const s = localStorage.getItem(SETTINGS_KEY);
-                if(s) settings = JSON.parse(s);
-                document.getElementById('setting-show-gtin').checked = settings.showGtin;
-                
-                updateUI();
-            } catch(e) { console.error("Veri yükleme hatası", e); }
-        }
+            // Kayıtlı veri var mı?
+            const savedInv = localStorage.getItem('stok_v5_data');
+            const savedMap = localStorage.getItem('stok_v5_map');
 
-        function saveDB() {
-            try { localStorage.setItem(DB_KEY, JSON.stringify(db)); updateUI(); } 
-            catch(e) { alert("Hafıza dolu! Verileri temizleyin."); }
-        }
-        
-        function saveSettings() {
-            localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-        }
-
-        function toggleGtinSetting() {
-            settings.showGtin = document.getElementById('setting-show-gtin').checked;
-            saveSettings();
-            updateUI();
-        }
-
-        // --- BARCODE PARSER (GS1) ---
-        function parseBarcode(text) {
-            let res = { raw: text, gtin: "", lot: "NOLOT", ref: "", sn: "", exp: "", uniqueId: "" };
-            text = text.replace(/\s+/g, ' ').trim();
-            
-            if(scanMode === 'SHELF') return { raw: text }; // Raf modunda parse etme
-
-            if(text.includes(' ')) { // Basit GS1 Ayrıştırma (AI)
-                const parts = text.split(' ');
-                for(let i=0; i<parts.length; i++) {
-                    let k = parts[i], v = parts[i+1];
-                    if(!v) continue;
-                    if(k === '01') res.gtin = v;
-                    if(k === '10') res.lot = v; 
-                    if(k === '17') res.exp = v;
-                    if(k === '21') res.sn = v;
-                    if(k === '240') res.ref = v;
-                }
-            } else { res.sn = text; } // Sadece seri no veya düz kod
-            
-            let baseId = res.gtin || res.ref || "UNKNOWN";
-            if(res.ref) baseId = res.ref;
-            res.uniqueId = baseId + "_" + res.lot; 
-            return res;
-        }
-
-        // --- KAMERA ---
-        function startScanner(mode) {
-            scanMode = mode;
-            document.getElementById('scanner-container').style.display = 'block';
-            document.getElementById('zoom-slider').value = 1;
-            
-            const indicator = document.getElementById('mode-indicator');
-            const txt = document.getElementById('cam-mode-text');
-            const laser = document.querySelector('.laser');
-            const rapidContainer = document.getElementById('rapid-toggle-container');
-            
-            if(mode === 'IN') {
-                txt.innerText = "GİRİŞ"; indicator.className = "w-2 h-2 rounded-full bg-emerald-500";
-                laser.style.background = "#10b981"; laser.style.boxShadow = "0 0 15px #10b981";
-                rapidContainer.style.display = "flex";
-            } else if (mode === 'OUT') {
-                txt.innerText = "ÇIKIŞ"; indicator.className = "w-2 h-2 rounded-full bg-rose-500";
-                laser.style.background = "#f43f5e"; laser.style.boxShadow = "0 0 15px #f43f5e";
-                rapidContainer.style.display = "flex";
-            } else if (mode === 'SHELF') {
-                txt.innerText = "RAF TANIMLA"; indicator.className = "w-2 h-2 rounded-full bg-yellow-500";
-                laser.style.background = "#eab308"; laser.style.boxShadow = "0 0 15px #eab308";
-                rapidContainer.style.display = "none";
-            }
-
-            html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: {width: 250, height: 250}, videoConstraints: { facingMode: "environment", focusMode: "continuous" } }, onScan)
-            .catch(err => { alert("Kamera hatası: " + err); stopScanner(); });
-        }
-
-        function stopScanner() {
-            if(html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    document.getElementById('scanner-container').style.display = 'none';
-                    html5QrCode.clear();
-                }).catch(() => { document.getElementById('scanner-container').style.display = 'none'; });
-            } else { document.getElementById('scanner-container').style.display = 'none'; }
-        }
-
-        function applyZoom(val) {
-            if(html5QrCode) { try { html5QrCode.applyVideoConstraints({ advanced: [{ zoom: parseFloat(val) }] }); } catch(e){} }
-        }
-
-        function onScan(decodedText) {
-            try {
-                // Bip Sesi
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const o = ctx.createOscillator(); const g = ctx.createGain();
-                o.connect(g); g.connect(ctx.destination);
-                o.type='sine'; o.frequency.value=1000; g.gain.value=0.1;
-                o.start(); setTimeout(()=>o.stop(), 0.1);
-
-                if (scanMode === 'SHELF') {
-                    html5QrCode.pause();
-                    openShelfModal(decodedText);
-                    return;
-                }
-
-                parsedData = parseBarcode(decodedText);
-                let prod = db.products[parsedData.uniqueId];
-                const isRapid = document.getElementById('rapid-toggle').checked;
-
-                if(isRapid && prod) {
-                    // Seri Mod Mantığı
-                    if(parsedData.sn) {
-                        const exists = prod.logs.find(l => l.sn === parsedData.sn);
-                        if(scanMode === 'IN' && exists) { showToast("Bu SN Zaten Var!", "bg-red-600"); return; }
-                        if(scanMode === 'OUT' && !exists) { showToast("Stokta Yok!", "bg-red-600"); return; }
-                    }
-                    const entry = { sn: parsedData.sn, lot: parsedData.lot, ref: parsedData.ref || prod.ref, date: new Date().toLocaleString(), type: scanMode };
-                    if(scanMode === 'IN') { prod.logs.push(entry); prod.totalQty++; }
-                    else { prod.logs.push(entry); prod.totalQty = Math.max(0, prod.totalQty - 1); }
-                    saveDB();
-                    showToast(`${prod.name} (${scanMode==='IN'?'+1':'-1'})`, scanMode==='IN'?"bg-emerald-600":"bg-rose-600");
-                } else {
-                    html5QrCode.pause(); 
-                    if(prod && parsedData.sn) {
-                        const exists = prod.logs.find(l => l.sn === parsedData.sn);
-                        if(scanMode === 'IN' && exists) { alert("DİKKAT: Bu seri no (SN) zaten stokta!"); }
-                        if(scanMode === 'OUT' && !exists) { alert("HATA: Bu seri no stokta bulunamadı!"); }
-                    }
-                    let suggested = !prod ? (Object.values(db.products).find(p => p.ref === parsedData.ref)?.name || "") : "";
-                    openProductModal(parsedData, prod, suggested);
-                }
-            } catch(e) { console.error(e); html5QrCode.resume(); }
-        }
-
-        // --- RAF YÖNETİMİ ---
-        function openShelfModal(code) {
-            document.getElementById('shelf-code-input').value = code.toUpperCase();
-            document.getElementById('shelf-desc-input').value = db.shelves[code.toUpperCase()]?.desc || "";
-            document.getElementById('shelf-modal').classList.remove('hidden');
-        }
-        function closeShelfModal() { document.getElementById('shelf-modal').classList.add('hidden'); stopScanner(); }
-        
-        function saveShelf() {
-            const code = document.getElementById('shelf-code-input').value;
-            const desc = document.getElementById('shelf-desc-input').value.trim();
-            db.shelves[code] = { id: code, desc: desc, created: new Date().toLocaleString() };
-            saveDB();
-            closeShelfModal();
-            showToast("Raf Tanımlandı");
-        }
-
-        // --- ÜRÜN YÖNETİMİ ---
-        function openProductModal(data, prod, suggestedName) {
-            document.getElementById('modal-gtin').innerText = data.gtin || "---";
-            document.getElementById('modal-lot').innerText = data.lot || "---";
-            document.getElementById('modal-sn').innerText = data.sn || "---";
-            document.getElementById('modal-ref').innerText = data.ref || (prod ? prod.ref : "---");
-            document.getElementById('modal-exp').innerText = data.exp || "---";
-            
-            const nameInp = document.getElementById('modal-name');
-            const shelfInp = document.getElementById('modal-shelf');
-            const img = document.getElementById('modal-img');
-            const noImg = document.getElementById('modal-no-img');
-
-            if(prod) {
-                nameInp.value = prod.name;
-                shelfInp.value = prod.shelf || "";
-                if(prod.image) { img.src = prod.image; img.classList.remove('hidden'); noImg.classList.add('hidden'); }
-                else { img.classList.add('hidden'); noImg.classList.remove('hidden'); }
+            if(savedInv) {
+                inventory = JSON.parse(savedInv);
             } else {
-                nameInp.value = suggestedName;
-                shelfInp.value = "";
-                img.classList.add('hidden'); noImg.classList.remove('hidden');
+                // Yoksa gömülü veriyi kullan (Count'ları sıfırla)
+                inventory = embeddedData.map(i => ({...i, count: 0}));
             }
 
-            const btn = document.getElementById('save-btn');
-            btn.innerText = scanMode === 'IN' ? "KAYDET (GİRİŞ)" : "KAYDET (ÇIKIŞ)";
-            btn.className = `w-full py-3.5 rounded-xl font-bold text-white shadow-lg mb-3 transition ${scanMode==='IN' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-rose-600 hover:bg-rose-500'}`;
-
-            document.getElementById('product-modal').classList.remove('hidden');
-        }
-
-        function closeModal() { document.getElementById('product-modal').classList.add('hidden'); html5QrCode.resume(); }
-
-        function saveProduct() {
-            const name = document.getElementById('modal-name').value || ("Ürün " + parsedData.uniqueId);
-            const shelf = document.getElementById('modal-shelf').value.toUpperCase();
-            const ref = document.getElementById('modal-ref').innerText;
-            const imgEl = document.getElementById('modal-img');
-            const imgSrc = (!imgEl.classList.contains('hidden')) ? imgEl.src : null;
-            const gtinVal = document.getElementById('modal-gtin').innerText;
-
-            if(!db.products[parsedData.uniqueId]) {
-                db.products[parsedData.uniqueId] = { 
-                    id: parsedData.uniqueId, name: name, shelf: shelf, ref: ref, lot: parsedData.lot, image: imgSrc, totalQty: 0, logs: [], gtin: gtinVal 
-                };
+            if(savedMap) {
+                barcodeMap = JSON.parse(savedMap);
             }
-            let prod = db.products[parsedData.uniqueId];
-            prod.name = name; prod.shelf = shelf; 
-            if(ref !== "---") prod.ref = ref;
-            if(gtinVal !== "---") prod.gtin = gtinVal;
-            if(imgSrc) prod.image = imgSrc;
 
-            const entry = { sn: parsedData.sn, lot: parsedData.lot, ref: prod.ref, date: new Date().toLocaleString(), type: scanMode };
-            if(scanMode === 'IN') { prod.logs.push(entry); prod.totalQty++; }
-            else { prod.logs.push(entry); prod.totalQty = Math.max(0, prod.totalQty - 1); }
-
-            saveDB();
-            document.getElementById('product-modal').classList.add('hidden');
-            stopScanner();
-            showToast("Kaydedildi");
-        }
-
-        function handlePhoto(input) {
-            if(input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const i = new Image(); i.src = e.target.result;
-                    i.onload = function() {
-                        const c = document.createElement('canvas'); const ctx = c.getContext('2d');
-                        const sc = 300 / i.width; c.width = 300; c.height = i.height * sc;
-                        ctx.drawImage(i, 0, 0, c.width, c.height);
-                        document.getElementById('modal-img').src = c.toDataURL('image/jpeg', 0.6);
-                        document.getElementById('modal-img').classList.remove('hidden');
-                        document.getElementById('modal-no-img').classList.add('hidden');
-                    }
+            renderInventory();
+            updateStats();
+            focusInput();
+            
+            // Focus Koruma
+            document.addEventListener('click', (e) => {
+                if(!e.target.closest('input') && !e.target.closest('button') && document.getElementById('link-modal').classList.contains('hidden')) {
+                    focusInput();
                 }
-                reader.readAsDataURL(input.files[0]);
-            }
+            });
         }
 
-        // --- SİLME İŞLEMLERİ ---
-        function confirmDelete(type, id) {
-            deleteTarget = { type, id };
-            document.getElementById('delete-modal').classList.remove('hidden');
-            document.getElementById('confirm-delete-btn').onclick = executeDelete;
-        }
+        // --- DOSYA YÜKLEME ---
+        function handleFileUpload(input) {
+            const file = input.files[0];
+            if(!file) return;
 
-        function closeDeleteModal() { document.getElementById('delete-modal').classList.add('hidden'); deleteTarget = null; }
-
-        function executeDelete() {
-            if(!deleteTarget) return;
-            if(deleteTarget.type === 'product') {
-                delete db.products[deleteTarget.id];
-                showToast("Ürün Silindi", "bg-red-600");
-            } else if (deleteTarget.type === 'shelf') {
-                delete db.shelves[deleteTarget.id];
-                showToast("Raf Silindi", "bg-red-600");
-            }
-            saveDB();
-            closeDeleteModal();
-            // Görünümü yenile
-            if(currentStockView === 'shelf-details') showShelfDetails(currentShelfFilter, false);
-            else renderStocks();
-        }
-
-        // --- GÖRÜNÜM (RENDER) ---
-        function updateUI() {
-            // Ana Ekran Özeti (Sadece dolu olanları göster)
-            const list = document.getElementById('summary-list');
-            const liveArr = Object.values(db.products).filter(p => p.totalQty > 0);
-            document.getElementById('total-badge').innerText = liveArr.length + " Çeşit";
-            
-            if(liveArr.length === 0) list.innerHTML = '<div class="text-center text-xs text-slate-600 py-4">Aktif stok verisi yok.</div>';
-            else {
-                // Son eklenen 5 ürün
-                list.innerHTML = liveArr.slice(-5).reverse().map(p => createSwipeItemHTML(p, 'summary')).join('');
-            }
-
-            if (!document.getElementById('page-stocks').classList.contains('hidden')) {
-                 if (currentStockView === 'shelf-details') showShelfDetails(currentShelfFilter, false); 
-                 else renderStocks();
-            }
-        }
-
-        // SWIPE HTML OLUŞTURUCU
-        function createSwipeItemHTML(item, type) {
-            // item = product object or shelf object
-            // type = 'summary', 'product-list', 'shelf-list'
-            
-            let content = '';
-            let deleteFunc = '';
-            let clickFunc = '';
-
-            if (type === 'summary' || type === 'product-list') {
-                const isSummary = type === 'summary';
-                deleteFunc = `confirmDelete('product', '${item.id}')`;
-                clickFunc = `showShelfDetails('${item.shelf || "RAFSIZ"}', true)`; // Özetten rafa gitmek mantıklı
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result;
+                const lines = text.split('\n');
                 
-                content = `
-                <div class="p-3 flex justify-between items-center" onclick="${isSummary ? clickFunc : ''}">
-                    <div class="flex items-center gap-3 overflow-hidden">
-                        <div class="w-10 h-10 bg-[#222] rounded-lg flex-none overflow-hidden border border-white/5">
-                            ${item.image ? `<img src="${item.image}" class="w-full h-full object-cover">` : `<div class="flex items-center justify-center h-full text-slate-600"><i class="fas fa-cube"></i></div>`}
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <div class="text-sm font-bold text-white truncate">${item.name}</div>
-                            <div class="flex items-center gap-2 mt-0.5">
-                                ${settings.showGtin ? `<span class="text-[9px] font-mono text-slate-500 bg-[#111] px-1 rounded border border-white/5">${item.gtin || '?'}</span>` : ''}
-                                <span class="text-[9px] font-mono text-indigo-300 bg-indigo-900/20 px-1 rounded">${item.ref}</span>
-                                <span class="text-[9px] font-mono text-yellow-300 bg-yellow-900/20 px-1 rounded">${item.lot}</span>
+                // Başlık satırını atla, veriyi parse et
+                // Beklenen Format: Stok Kodu;Stok İsim;Kalan Miktar;Son Kullanma Tarihi;LOT;Depo Adres
+                const newInv = [];
+                
+                for(let i=1; i<lines.length; i++) {
+                    const line = lines[i].trim();
+                    if(!line) continue;
+                    
+                    const cols = line.split(';'); // NOKTALI VİRGÜL AYIRACI
+                    if(cols.length < 3) continue;
+
+                    newInv.push({
+                        code: cols[0]?.trim(),
+                        name: cols[1]?.trim(),
+                        target: parseInt(cols[2]?.trim()) || 0,
+                        date: cols[3]?.trim() || '-',
+                        lot: cols[4]?.trim() || '-',
+                        loc: cols[5]?.trim() || '-'
+                    });
+                }
+
+                if(newInv.length > 0) {
+                    if(confirm(`${newInv.length} ürün bulundu. Mevcut liste silinip bu yüklensin mi?`)) {
+                        inventory = newInv.map(i => ({...i, count: 0}));
+                        lastScanned = null;
+                        saveData();
+                        renderInventory();
+                        updateStats();
+                        alert("Liste başarıyla yüklendi!");
+                    }
+                } else {
+                    alert("Hata: Dosya formatı uygun değil. Noktalı virgül (;) kullanıldığından emin ol.");
+                }
+            };
+            reader.readAsText(file, "UTF-8");
+        }
+
+        // --- RENDER ---
+        function renderInventory() {
+            const container = document.getElementById('inventory-container');
+            container.innerHTML = '';
+
+            // Sıralama: Son Okunan > Eksikler > Tamamlananlar
+            const sorted = [...inventory].sort((a, b) => {
+                if(a.code === lastScanned) return -1;
+                if(b.code === lastScanned) return 1;
+                
+                const aDone = a.count >= a.target;
+                const bDone = b.count >= b.target;
+                if(aDone === bDone) return 0;
+                return aDone ? 1 : -1;
+            });
+
+            // Performans için ilk 50 öğe (Sanal scroll yok ama yeterli)
+            const displayList = sorted.slice(0, 100);
+
+            displayList.forEach(item => {
+                const isMatch = item.count === item.target;
+                const isOver = item.count > item.target;
+                const isProcess = item.count > 0 && !isMatch;
+                const isLast = item.code === lastScanned;
+
+                let statusClass = '';
+                let iconClass = 'fa-regular fa-circle text-slate-600';
+                let countColor = 'text-slate-400';
+
+                if(isOver) {
+                    statusClass = 'status-error';
+                    iconClass = 'fa-solid fa-triangle-exclamation text-red-500';
+                    countColor = 'text-red-500';
+                } else if(isMatch) {
+                    statusClass = 'status-ok';
+                    iconClass = 'fa-solid fa-circle-check text-green-500';
+                    countColor = 'text-green-500';
+                } else if(isProcess) {
+                    statusClass = 'status-process';
+                    iconClass = 'fa-solid fa-spinner fa-spin text-yellow-500';
+                    countColor = 'text-yellow-400';
+                }
+
+                const html = `
+                    <div id="row-${item.code}" class="item-card relative bg-slate-800 rounded-lg p-3 mb-2 shadow-sm ${statusClass} ${isLast ? 'last-scanned' : ''}">
+                        <div class="flex justify-between items-start gap-3">
+                            <div class="flex-1 overflow-hidden">
+                                <div class="flex flex-wrap items-center gap-2 mb-1">
+                                    <span class="bg-slate-900 text-blue-400 px-2 py-0.5 rounded text-sm font-mono font-bold border border-slate-700">${item.code}</span>
+                                    <span class="text-[10px] text-slate-400 border border-slate-700 px-1.5 py-0.5 rounded bg-slate-900/50 flex items-center gap-1">
+                                        <i class="fa-solid fa-layer-group text-[9px]"></i> ${item.lot}
+                                    </span>
+                                    <span class="text-[10px] text-slate-400 border border-slate-700 px-1.5 py-0.5 rounded bg-slate-900/50 flex items-center gap-1">
+                                        <i class="fa-solid fa-calendar text-[9px]"></i> ${item.date}
+                                    </span>
+                                </div>
+                                <h4 class="text-slate-200 font-semibold text-sm leading-snug truncate" title="${item.name}">${item.name}</h4>
+                                <div class="mt-1 text-xs text-slate-400 flex items-center gap-1">
+                                    <i class="fa-solid fa-location-dot text-slate-500"></i> ${item.loc}
+                                </div>
+                            </div>
+                            
+                            <div class="flex flex-col items-end gap-1 min-w-[60px]">
+                                <div class="text-2xl font-bold mono leading-none flex items-baseline gap-1">
+                                    <span class="${countColor}">${item.count}</span>
+                                    <span class="text-xs text-slate-600">/${item.target}</span>
+                                </div>
+                                <div class="mt-1">${item.code === lastScanned ? '<span class="text-[10px] font-bold text-blue-500 animate-pulse">OKUNDU</span>' : `<i class="${iconClass}"></i>`}</div>
                             </div>
                         </div>
+                        
+                        <div class="flex justify-end gap-2 mt-2 pt-2 border-t border-slate-700/50">
+                            <button onclick="updateCount('${item.code}', -1)" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-slate-300 text-xs font-bold transition border border-slate-600">-1</button>
+                            <button onclick="updateCount('${item.code}', 1)" class="px-5 py-1 bg-blue-600 hover:bg-blue-500 rounded text-white text-xs font-bold shadow-lg shadow-blue-500/20 transition">+1 EKLE</button>
+                        </div>
                     </div>
-                    <div class="flex flex-col items-end pl-2">
-                        <span class="text-xl font-bold ${item.totalQty>0 ? 'text-blue-400' : 'text-slate-600'}">${item.totalQty}</span>
-                        ${item.shelf ? `<span class="text-[9px] text-slate-500 font-bold">${item.shelf}</span>` : ''}
-                    </div>
-                </div>`;
-            } else if (type === 'shelf-list') {
-                deleteFunc = `confirmDelete('shelf', '${item.shelf}')`; // item is aggregated shelf object
-                clickFunc = `showShelfDetails('${item.shelf}', true)`;
-                
-                content = `
-                <div class="p-4 flex justify-between items-center" onclick="${clickFunc}">
-                    <div>
-                        <h3 class="font-bold text-white text-base flex items-center">
-                            <i class="fas fa-layer-group mr-2 ${item.totalQty > 0 ? 'text-indigo-400' : 'text-slate-600'}"></i> ${item.shelf}
-                        </h3>
-                        ${item.desc ? `<div class="text-[10px] text-slate-500 mt-1 ml-6">${item.desc}</div>` : ''}
-                    </div>
-                    <div class="text-right">
-                        <div class="text-2xl font-bold ${item.totalQty>0?'text-blue-400':'text-slate-700'}">${item.totalQty}</div>
-                        <div class="text-[9px] text-slate-500">${item.itemCount} Kalem</div>
-                    </div>
-                </div>`;
-            }
-
-            return `
-            <div class="swipe-wrapper mb-2 bg-[#121212] rounded-xl border border-white/5 shadow-sm">
-                <div class="swipe-content">
-                    ${content}
-                </div>
-                <div class="swipe-action rounded-r-xl" onclick="${deleteFunc}">
-                    <i class="fas fa-trash-alt"></i>
-                </div>
-            </div>
-            `;
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+            });
         }
 
-        function renderStocks() {
-            currentStockView = 'shelf-list';
-            currentShelfFilter = null;
-            document.getElementById('stock-title').innerText = "Stoklar & Raflar";
-            document.getElementById('back-to-list').classList.add('hidden');
-            
-            const grid = document.getElementById('stock-list');
-            const term = document.getElementById('search-input').value.toLowerCase();
-            const allProducts = Object.values(db.products);
-            const definedShelves = db.shelves || {};
+        // --- BARKOD İŞLEME ---
+        const inputEl = document.getElementById('barcodeInput');
 
-            // Rafları Grupla
-            const grouped = {};
-            // Önce tanımlı rafları koy
-            Object.values(definedShelves).forEach(s => {
-                grouped[s.id] = { totalQty: 0, itemCount: 0, shelf: s.id, desc: s.desc, products: [] };
-            });
-            // Ürünleri ekle
-            allProducts.forEach(p => {
-                // Eğer ürün silinmişse (totalQty 0 ise) ve ayar gizle diyorsa vs eklenebilir ama şuan hepsini alalım
-                const sKey = (p.shelf && p.shelf.trim()) ? p.shelf.toUpperCase() : "TANIMSIZ";
-                if(!grouped[sKey]) grouped[sKey] = { totalQty: 0, itemCount: 0, shelf: sKey, desc: "", products: [] };
-                
-                if(p.totalQty > 0) {
-                    grouped[sKey].totalQty += p.totalQty;
-                    grouped[sKey].itemCount++;
+        inputEl.addEventListener('keydown', (e) => {
+            if(e.key === 'Enter') {
+                const val = inputEl.value.trim().toUpperCase();
+                if(val) processScan(val);
+                inputEl.value = '';
+            }
+        });
+
+        function focusInput() { inputEl.focus(); }
+        function clearInput() { inputEl.value = ''; focusInput(); }
+
+        function processScan(scan) {
+            // 1. Eşleşme kontrolü
+            let target = barcodeMap[scan];
+            
+            // 2. Direkt stok kodu mu?
+            if(!target) {
+                const direct = inventory.find(i => i.code === scan);
+                if(direct) target = scan;
+            }
+
+            if(target) {
+                updateCount(target, 1);
+            } else {
+                // Bilinmeyen Barkod
+                playBeep('error');
+                tempBarcode = scan;
+                openModal();
+            }
+        }
+
+        function updateCount(code, amount) {
+            const idx = inventory.findIndex(i => i.code === code);
+            if(idx === -1) return;
+
+            const item = inventory[idx];
+            const newVal = Math.max(0, item.count + amount);
+            
+            inventory[idx].count = newVal;
+            lastScanned = code;
+
+            // Bildirim & Ses
+            const msgEl = document.getElementById('status-msg');
+            if(amount > 0) {
+                if(newVal > item.target) {
+                    playBeep('error');
+                    msgEl.innerHTML = `<span class="text-red-500">FAZLA: ${item.name}</span>`;
+                } else if(newVal === item.target) {
+                    playBeep('complete');
+                    msgEl.innerHTML = `<span class="text-green-500">TAMAMLANDI: ${item.name}</span>`;
+                } else {
+                    playBeep('success');
+                    msgEl.innerHTML = `<span class="text-blue-400">OKUNDU: ${item.name}</span>`;
                 }
-                grouped[sKey].products.push(p);
+            } else {
+                msgEl.innerText = "Adet düşüldü.";
+            }
+
+            saveData();
+            renderInventory();
+            updateStats();
+
+            // Scroll focus
+            setTimeout(() => {
+                const el = document.getElementById(`row-${code}`);
+                if(el) el.scrollIntoView({behavior: 'smooth', block: 'center'});
+            }, 50);
+        }
+
+        // --- İSTATİSTİK ---
+        function updateStats() {
+            const total = inventory.reduce((a, b) => a + b.target, 0);
+            const counted = inventory.reduce((a, b) => a + b.count, 0);
+            const remaining = Math.max(0, total - counted);
+
+            document.getElementById('stat-total').innerText = total;
+            document.getElementById('stat-counted').innerText = counted;
+            document.getElementById('stat-remaining').innerText = remaining;
+        }
+
+        function saveData() {
+            localStorage.setItem('stok_v5_data', JSON.stringify(inventory));
+            localStorage.setItem('stok_v5_map', JSON.stringify(barcodeMap));
+        }
+
+        // --- MODAL ---
+        const modal = document.getElementById('link-modal');
+        const modalList = document.getElementById('modal-list');
+        const modalSearch = document.getElementById('modal-search');
+
+        function openModal() {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.getElementById('modal-barcode-display').innerText = tempBarcode;
+            renderModalList('');
+            modalSearch.focus();
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            tempBarcode = '';
+            focusInput();
+        }
+
+        function renderModalList(term) {
+            modalList.innerHTML = '';
+            const filtered = inventory.filter(i => 
+                i.name.toLowerCase().includes(term.toLowerCase()) || 
+                i.code.toLowerCase().includes(term.toLowerCase())
+            );
+
+            if(filtered.length === 0) {
+                modalList.innerHTML = '<div class="text-center text-slate-500 py-4">Ürün bulunamadı.</div>';
+                return;
+            }
+
+            filtered.forEach(item => {
+                const div = document.createElement('div');
+                div.className = "bg-slate-700/50 p-3 rounded border border-slate-600 flex justify-between items-center cursor-pointer hover:bg-slate-600 transition mb-2";
+                div.innerHTML = `
+                    <div>
+                        <div class="text-white font-bold text-sm">${item.name}</div>
+                        <div class="text-xs text-blue-300 font-mono">${item.code}</div>
+                    </div>
+                    <i class="fa-solid fa-link text-white/50"></i>
+                `;
+                div.onclick = () => {
+                    barcodeMap[tempBarcode] = item.code;
+                    closeModal();
+                    updateCount(item.code, 1);
+                    alert(`BAŞARILI: ${tempBarcode} artık ${item.code} olarak tanınacak.`);
+                };
+                modalList.appendChild(div);
             });
-
-            // Filtrele ve HTML Yap
-            const keys = Object.keys(grouped).sort();
-            let html = "";
-            
-            // Eğer arama metni varsa direkt ürünleri listele
-            if(term.length > 0) {
-                const filteredProds = allProducts.filter(p => 
-                    p.name.toLowerCase().includes(term) || 
-                    (p.gtin && p.gtin.includes(term)) ||
-                    p.ref.toLowerCase().includes(term) ||
-                    p.lot.toLowerCase().includes(term) ||
-                    (p.shelf && p.shelf.toLowerCase().includes(term))
-                );
-                html = filteredProds.map(p => createSwipeItemHTML(p, 'product-list')).join('');
-                if(html === "") html = '<div class="text-center text-slate-500 mt-4">Sonuç bulunamadı.</div>';
-            } else {
-                // Raf listesi modu
-                html = keys.map(k => {
-                    const g = grouped[k];
-                    // Boş ve tanımsız rafı gösterme (opsiyonel)
-                    if(g.shelf === "TANIMSIZ" && g.totalQty === 0) return '';
-                    return createSwipeItemHTML(g, 'shelf-list');
-                }).join('');
-                if(html === "") html = '<div class="text-center text-slate-500 mt-4">Henüz raf veya stok yok.</div>';
-            }
-            grid.innerHTML = html;
         }
 
-        function showShelfDetails(shelfKey, switchView=true) {
-            currentStockView = 'shelf-details';
-            currentShelfFilter = shelfKey;
-            
-            const sInfo = db.shelves[shelfKey];
-            document.getElementById('stock-title').innerHTML = `
-                <div class="flex flex-col leading-tight">
-                    <span>${shelfKey}</span>
-                    <span class="text-[10px] text-slate-400 font-normal">${sInfo ? sInfo.desc : 'Detay Görünümü'}</span>
-                </div>`;
-            document.getElementById('back-to-list').classList.remove('hidden');
+        modalSearch.addEventListener('input', (e) => renderModalList(e.target.value));
 
-            const grid = document.getElementById('stock-list');
-            const products = Object.values(db.products).filter(p => (p.shelf ? p.shelf.toUpperCase() : "TANIMSIZ") === shelfKey);
-
-            if(products.length === 0) {
-                grid.innerHTML = '<div class="text-center text-slate-500 mt-10">Bu rafta ürün yok.</div>';
-            } else {
-                grid.innerHTML = products.map(p => createSwipeItemHTML(p, 'product-list')).join('');
-            }
-
-            if(switchView) switchPage('stocks');
-        }
-
-        // --- YARDIMCILAR ---
-        function showToast(msg, color="bg-emerald-600") {
-            const t = document.getElementById('toast');
-            document.getElementById('toast-text').innerText = msg;
-            t.className = ""; 
-            t.classList.add(color.replace("bg-", ""), "show");
-            t.style.backgroundColor = color === "bg-red-600" ? "#dc2626" : (color === "bg-emerald-600" ? "#10b981" : "#eab308");
-            setTimeout(() => t.classList.remove('show'), 2000);
-        }
-
-        function switchPage(page) {
-            document.querySelectorAll('main > div').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
-            
-            if(page === 'home') {
-                document.getElementById('page-home').classList.remove('hidden');
-                document.querySelectorAll('.nav-btn')[0].classList.add('active');
-            } else if (page === 'stocks') {
-                document.getElementById('page-stocks').classList.remove('hidden');
-                document.querySelectorAll('.nav-btn')[1].classList.add('active');
-                if(currentStockView !== 'shelf-details') renderStocks();
-            }
-        }
-
-        function openSettings() { document.getElementById('settings-modal').classList.remove('hidden'); }
-        
-        function backupData() {
+        // --- EXPORT CSV ---
+        function exportCSV() {
+            let csv = "\uFEFFStok Kodu;Stok İsim;Hedef;Sayılan;Durum;Raf;LOT;SKT\n";
+            inventory.forEach(i => {
+                let status = i.count === i.target ? "TAMAM" : (i.count > i.target ? "FAZLA" : "EKSİK");
+                csv += `${i.code};"${i.name}";${i.target};${i.count};${status};"${i.loc}";"${i.lot}";"${i.date}"\n`;
+            });
+            const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+            const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
-            a.download = `ARC_Yedek_${new Date().toISOString().slice(0,10)}.json`;
+            a.href = url;
+            a.download = `Sayim_Sonuc_${new Date().toLocaleDateString()}.csv`;
+            document.body.appendChild(a);
             a.click();
-        }
-
-        function exportExcel() {
-            let csv = "GTIN;URUN_ADI;REF;LOT;SKT;RAF;ADET;HAREKETLER\n";
-            Object.values(db.products).forEach(p => {
-                csv += `${p.gtin || p.id};${p.name};${p.ref};${p.lot};${p.exp || ''};${p.shelf};${p.totalQty};${p.logs.length}\n`;
-            });
-            const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); // BOM eklemedim, gerekirse \uFEFF eklenebilir
-            const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'Stok_Raporu.csv'; a.click();
-        }
-
-        function resetData() {
-            if(confirm("DİKKAT: Tüm veritabanı silinecek! Onaylıyor musunuz?")) {
-                localStorage.removeItem(DB_KEY);
-                db = { products: {}, shelves: {} };
-                updateUI();
-                alert("Sıfırlandı.");
-                document.getElementById('settings-modal').classList.add('hidden');
-            }
-        }
-
-        function shareWhatsApp() {
-            let msg = "*ARC STOK RAPORU* 📦\n" + new Date().toLocaleString() + "\n\n";
-            const items = Object.values(db.products).filter(p => p.totalQty > 0);
-            
-            if(items.length === 0) { alert("Paylaşılacak stok yok."); return; }
-            
-            items.forEach(p => {
-                msg += `🔹 *${p.name}*\n   📍Raf: ${p.shelf || 'YOK'} | Adet: *${p.totalQty}*\n   🏷️Ref: ${p.ref} | Lot: ${p.lot}\n\n`;
-            });
-            
-            window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+            document.body.removeChild(a);
         }
 
         // Başlat
         init();
-        switchPage('home');
+
     </script>
 </body>
 </html>
+
