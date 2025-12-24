@@ -3,551 +3,521 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Stok Terminal Pro V5</title>
+    <title>Stok Master V8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@500;800&display=swap');
 
         :root {
-            --bg-dark: #0f172a;
+            --bg-color: #0f172a;
             --card-bg: #1e293b;
             --accent: #3b82f6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-dark);
-            color: #f1f5f9;
+            background-color: var(--bg-color);
+            color: #f8fafc;
+            font-family: 'Outfit', sans-serif;
             height: 100vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            user-select: none; /* Metin seçimini engelle (hız için) */
+            overscroll-behavior: none;
         }
 
         .mono { font-family: 'JetBrains Mono', monospace; }
 
-        /* Listeleme Alanı Scroll */
-        #inventory-container {
-            scroll-behavior: smooth;
-            -webkit-overflow-scrolling: touch;
+        /* SCROLLBAR */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: var(--bg-color); }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+
+        /* INPUT ALANI - Sticky & Glassmorphism */
+        .scanner-header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid #334155;
+            padding: 1rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
         }
 
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-
-        /* Kart Stilleri */
-        .item-card {
-            transition: transform 0.1s, background-color 0.2s;
-            border-left: 5px solid #475569; /* Varsayılan Gri */
+        .master-input {
+            width: 100%;
+            background: #020617;
+            border: 2px solid #334155;
+            color: var(--accent);
+            font-size: 1.5rem;
+            padding: 1rem;
+            border-radius: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            text-transform: uppercase;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-align: center;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
         }
         
-        .item-card:active { transform: scale(0.98); }
+        .master-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2), inset 0 2px 4px rgba(0,0,0,0.5);
+            transform: scale(1.01);
+        }
 
-        /* Durum Renkleri */
-        .status-ok { border-left-color: #22c55e; background: rgba(34, 197, 94, 0.08); } /* Yeşil */
-        .status-error { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.15); } /* Kırmızı/Fazla */
-        .status-process { border-left-color: #eab308; background: rgba(234, 179, 8, 0.05); } /* Sarı/Devam */
-        
-        /* Son Okunan Vurgusu */
-        .last-scanned {
-            border: 2px solid #3b82f6;
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+        /* KART TASARIMI */
+        .stock-card {
+            background: var(--card-bg);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .stock-card.scanned-active {
+            border-color: var(--accent);
+            background: #172554; /* Blue tint */
+            transform: scale(1.02);
             z-index: 10;
+            box-shadow: 0 10px 30px -10px rgba(59, 130, 246, 0.5);
         }
 
-        /* Input Alanı */
-        .scanner-input:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+        /* Durum Çizgileri */
+        .status-indicator {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+        }
+        .s-exact { background: var(--success); box-shadow: 0 0 10px var(--success); }
+        .s-over { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
+        .s-under { background: var(--warning); }
+        .s-empty { background: #475569; }
+
+        /* Badge'ler */
+        .badge-lot {
+            background: #334155;
+            color: #e2e8f0;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            border: 1px solid #475569;
         }
 
-        .modal-bg { background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); }
+        /* Modal */
+        .modal-backdrop {
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(5px);
+        }
     </style>
 </head>
 <body>
 
-    <!-- ÜST BAR: Özet Bilgi -->
-    <header class="bg-slate-800 border-b border-slate-700 p-3 shadow-xl z-30 flex flex-col gap-2">
-        <div class="flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                    <i class="fa-solid fa-barcode text-white text-lg"></i>
-                </div>
-                <div>
-                    <h1 class="text-white font-bold text-lg leading-none tracking-tight">STOK MİZAN</h1>
-                    <div class="text-[10px] text-slate-400 font-mono mt-1">TERMİNAL MODU</div>
-                </div>
+    <!-- ÜST PANEL -->
+    <header class="flex justify-between items-center p-4 bg-slate-900 border-b border-slate-800">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <i class="fa-solid fa-box-open text-white"></i>
             </div>
-            
-            <div class="flex gap-2">
-                <!-- CSV Yükle Butonu -->
-                <button onclick="document.getElementById('csvInput').click()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-2 rounded-lg text-xs font-bold border border-slate-600 transition flex items-center gap-2">
-                    <i class="fa-solid fa-file-import"></i> <span class="hidden sm:inline">Liste Yükle</span>
-                </button>
-                <!-- Rapor Al Butonu -->
-                <button onclick="exportCSV()" class="bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-lg shadow-green-900/20 transition flex items-center gap-2">
-                    <i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Rapor</span>
-                </button>
+            <div>
+                <h1 class="font-bold text-lg leading-tight tracking-tight">STOK MASTER</h1>
+                <div class="text-[10px] text-slate-400 font-mono">V8.0 | ÖZEL SÜRÜM</div>
             </div>
         </div>
-
-        <!-- İstatistik Çubuğu -->
-        <div class="flex rounded-md overflow-hidden text-center text-xs font-mono font-bold border border-slate-700">
-            <div class="bg-slate-900 text-slate-400 py-1.5 flex-1 border-r border-slate-700">
-                TOPLAM: <span id="stat-total" class="text-white text-sm">0</span>
+        
+        <div class="flex gap-2">
+            <div class="bg-slate-800 px-3 py-2 rounded-lg border border-slate-700 text-xs font-mono flex items-center gap-2">
+                <span class="text-slate-400">İLERLEME:</span>
+                <span id="progress-text" class="text-white font-bold">0/0</span>
             </div>
-            <div class="bg-slate-900 text-slate-400 py-1.5 flex-1 border-r border-slate-700">
-                SAYILAN: <span id="stat-counted" class="text-yellow-400 text-sm">0</span>
-            </div>
-            <div class="bg-slate-900 text-slate-400 py-1.5 flex-1">
-                KALAN: <span id="stat-remaining" class="text-red-400 text-sm">0</span>
-            </div>
+            <button onclick="exportReport()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-emerald-900/20 transition flex items-center gap-2">
+                <i class="fa-solid fa-file-excel"></i> RAPOR İNDİR
+            </button>
         </div>
     </header>
 
-    <!-- SCANNER ALANI (SABİT) -->
-    <div class="p-3 bg-slate-800/95 backdrop-blur border-b border-slate-700 sticky top-0 z-20 shadow-lg">
+    <!-- SCANNER ALANI -->
+    <div class="scanner-header">
         <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <i class="fa-solid fa-qrcode text-slate-500 text-xl"></i>
-            </div>
-            <input 
-                type="text" 
-                id="barcodeInput" 
-                placeholder="Barkodu okut..." 
-                class="scanner-input w-full bg-slate-900 text-white text-xl font-mono pl-10 pr-4 py-3 rounded-xl border border-slate-600 outline-none transition-all placeholder-slate-600"
-                autocomplete="off"
-                spellcheck="false"
-            >
-            <div class="absolute inset-y-0 right-2 flex items-center">
-                 <button onclick="clearInput()" class="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-white">
-                    <i class="fa-solid fa-xmark"></i>
-                 </button>
-            </div>
+            <input type="text" id="barcodeInput" class="master-input" placeholder="BARKOD / LOT OKUT..." autocomplete="off">
+            <div id="status-msg" class="absolute -bottom-6 left-0 w-full text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest transition-colors">Sistem Hazır</div>
         </div>
-        <!-- Durum Mesajı -->
-        <div id="status-msg" class="text-center text-xs font-bold mt-1 h-4 text-slate-500 transition-colors">Hazır, bekliyor...</div>
     </div>
 
     <!-- LİSTE ALANI -->
-    <main id="inventory-container" class="flex-1 overflow-y-auto p-2 bg-slate-900 pb-24">
-        <!-- JS ile dolacak -->
+    <main id="inventory-list" class="flex-1 overflow-y-auto p-3 pb-32 space-y-2">
+        <!-- Kartlar Buraya -->
     </main>
 
-    <!-- MANUEL GİRİŞ BUTONU (MOBİL) -->
-    <button onclick="focusInput()" class="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 hover:bg-blue-500 rounded-full shadow-2xl shadow-blue-500/50 flex items-center justify-center text-white z-40 md:hidden active:scale-90 transition-transform">
-        <i class="fa-solid fa-keyboard text-xl"></i>
+    <!-- MOBİL GİRİŞ BUTONU -->
+    <button onclick="focusInput()" class="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 hover:bg-blue-500 text-white rounded-full shadow-2xl flex items-center justify-center md:hidden z-40 active:scale-90 transition-transform">
+        <i class="fa-solid fa-barcode text-xl"></i>
     </button>
 
-    <!-- GİZLİ INPUT -->
-    <input type="file" id="csvInput" class="hidden" accept=".csv" onchange="handleFileUpload(this)">
-
-    <!-- MODAL: EŞLEŞTİRME -->
-    <div id="link-modal" class="modal-bg fixed inset-0 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-slate-800 rounded-2xl w-full max-w-md border border-slate-600 shadow-2xl flex flex-col max-h-[80vh]">
-            <div class="p-4 border-b border-slate-700 bg-slate-800 rounded-t-2xl">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                        <i class="fa-solid fa-link text-yellow-500"></i> Barkod Tanımla
-                    </h3>
-                    <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+    <!-- EŞLEŞTİRME MODALI -->
+    <div id="modal" class="modal-backdrop fixed inset-0 z-50 hidden flex flex-col items-center justify-center p-4">
+        <div class="bg-slate-900 w-full max-w-md rounded-2xl border border-slate-700 shadow-2xl flex flex-col max-h-[80vh] overflow-hidden">
+            <div class="p-4 border-b border-slate-800 bg-slate-900">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-white font-bold text-lg"><i class="fa-solid fa-magnifying-glass text-yellow-500 mr-2"></i>ÜRÜN SEÇİMİ</h3>
+                    <button onclick="closeModal()" class="text-slate-500 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
                 </div>
-                
-                <div class="bg-slate-900 p-3 rounded border border-slate-700 text-center mb-4">
-                    <div class="text-[10px] text-slate-500 uppercase tracking-wider">OKUNAN BARKOD</div>
-                    <div id="modal-barcode-display" class="text-2xl font-bold text-white mono mt-1 select-all"></div>
+                <div class="text-center bg-slate-950 p-2 rounded border border-slate-800">
+                    <div class="text-[10px] text-slate-500">ARANAN DEĞER</div>
+                    <div id="modal-val" class="text-xl font-mono text-yellow-400 font-bold">---</div>
                 </div>
-
-                <div class="relative">
-                    <i class="fa-solid fa-search absolute left-3 top-3.5 text-slate-500"></i>
-                    <input type="text" id="modal-search" placeholder="Stok Kodu veya İsim Ara..." class="w-full bg-slate-900 border border-slate-600 rounded-lg pl-10 p-3 text-white focus:border-blue-500 outline-none">
-                </div>
+                <div class="mt-2 text-xs text-slate-400 text-center">Birden fazla eşleşme bulundu. Doğru LOT'u seç:</div>
             </div>
             
-            <div id="modal-list" class="flex-1 overflow-y-auto p-2 space-y-2 bg-slate-900">
-                <!-- Arama sonuçları -->
-            </div>
+            <div id="modal-list" class="flex-1 overflow-y-auto p-2 space-y-2 bg-slate-950"></div>
         </div>
     </div>
 
     <script>
-        // --- SES EFEKTLERİ ---
-        const playBeep = (type) => {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            
-            if(type === 'success') { // İnce Bip
-                osc.type = 'sine';
-                osc.frequency.value = 1000;
-                gain.gain.setValueAtTime(0.1, ctx.currentTime);
-                osc.start();
-                osc.stop(ctx.currentTime + 0.1);
-            } else if(type === 'error') { // Kalın Düt
-                osc.type = 'sawtooth';
-                osc.frequency.value = 200;
-                gain.gain.setValueAtTime(0.1, ctx.currentTime);
-                osc.start();
-                osc.stop(ctx.currentTime + 0.3);
-            } else if(type === 'complete') { // Çift Bip
-                osc.type = 'square';
-                osc.frequency.value = 800;
-                gain.gain.setValueAtTime(0.05, ctx.currentTime);
-                osc.start();
-                setTimeout(() => osc.frequency.value = 1200, 100);
-                osc.stop(ctx.currentTime + 0.2);
-            }
-        };
-
-        // --- GÖMÜLÜ VERİ (SENİN LİSTEN) ---
-        const embeddedData = [
-            {code:"MH-013",name:"ALKALİN FOSFATAZ (ALP ) (280 TEST)",target:4,date:"05.08.2027",lot:"017",loc:"Sevkiyat Depo | G | 11 | 1"},
-            {code:"MH-102",name:"LDL KOLESTEROL (280 TEST)",target:2,date:"18.12.2026",lot:"053",loc:"Sevkiyat Depo | G | 11 | 1"},
-            {code:"MH-213",name:"LİPAZ (282 TEST)",target:1,date:"18.05.2027",lot:"009",loc:"Sevkiyat Depo | G | 11 | 1"},
-            {code:"MH-343",name:"CRP TURBİ WR (310 TEST)",target:3,date:"06.08.2026",lot:"406",loc:"Sevkiyat Depo | G | 11 | 1"},
-            {code:"MH-363",name:"RF TÜRBİDİMETRİK (282 TEST)",target:2,date:"21.04.2027",lot:"886",loc:"Sevkiyat Depo | G | 11 | 1"},
-            {code:"MH-483",name:"LDH DGKC (216 TEST)",target:2,date:"30.08.2028",lot:"810",loc:"Sevkiyat Depo | G | 11 | 1"},
-            {code:"VT-010",name:"SPESİFİK PROTEİN KONTROL SEVİYE 2( 5 x 1 mL )",target:5,date:"15.10.2027",lot:"019",loc:"Sevkiyat Depo | G | 11 | 1"},
-            {code:"MH-222",name:"MAGNEZYUM (700 TEST)",target:1,date:"03.03.2028",lot:"324",loc:"Sevkiyat Depo | G | 15 | 1"},
-            {code:"MH-272",name:"TRİGLİSERİT (884 TEST)",target:5,date:"25.10.2026",lot:"300",loc:"Sevkiyat Depo | G | 15 | 1"},
-            {code:"MH-282",name:"UIBC (350 TEST)",target:1,date:"01.04.2027",lot:"907",loc:"Sevkiyat Depo | G | 15 | 1"},
-            {code:"MH-302",name:"ÜRİK ASİT (350 TEST)",target:11,date:"29.03.2027",lot:"842",loc:"Sevkiyat Depo | G | 15 | 1"},
-            {code:"MH-442",name:"SODYUM (230 TEST)",target:2,date:"30.03.2026",lot:"012",loc:"Sevkiyat Depo | G | 15 | 1"},
-            {code:"MH-462",name:"KLORÜR (236 TEST)",target:1,date:"30.03.2030",lot:"756",loc:"Sevkiyat Depo | G | 15 | 1"},
-            {code:"MH-482",name:"LDH DGKC (326 TEST)",target:1,date:"30.08.2028",lot:"810",loc:"Sevkiyat Depo | G | 15 | 1"}
+        // --- SENİN STOK1.CSV DOSYANDAKİ VERİLER (TAM LİSTE) ---
+        // ID formatı: CODE__LOT (Benzersizlik için)
+        const rawData = [
+            {code:"MH-013",name:"ALKALİN FOSFATAZ (ALP ) (280 TEST)",target:4,date:"05.08.2027",lot:"017",loc:"G | 11 | 1"},
+            {code:"MH-102",name:"LDL KOLESTEROL (280 TEST)",target:2,date:"18.12.2026",lot:"053",loc:"G | 11 | 1"},
+            {code:"MH-213",name:"LİPAZ (282 TEST)",target:1,date:"18.05.2027",lot:"009",loc:"G | 11 | 1"},
+            {code:"MH-343",name:"CRP TURBİ WR (310 TEST)",target:3,date:"06.08.2026",lot:"406",loc:"G | 11 | 1"},
+            {code:"MH-363",name:"RF TÜRBİDİMETRİK (282 TEST)",target:2,date:"21.04.2027",lot:"886",loc:"G | 11 | 1"},
+            {code:"MH-483",name:"LDH DGKC (216 TEST)",target:2,date:"30.08.2028",lot:"810",loc:"G | 11 | 1"},
+            {code:"VT-010",name:"SPESİFİK PROTEİN KONTROL SEVİYE 2( 5 x 1 mL )",target:5,date:"15.10.2027",lot:"019",loc:"G | 11 | 1"},
+            {code:"MH-222",name:"MAGNEZYUM (700 TEST)",target:1,date:"03.03.2028",lot:"324",loc:"G | 15 | 1"},
+            {code:"MH-272",name:"TRİGLİSERİT (884 TEST)",target:5,date:"25.10.2026",lot:"300",loc:"G | 15 | 1"},
+            {code:"MH-282",name:"UIBC (350 TEST)",target:1,date:"01.04.2027",lot:"907",loc:"G | 15 | 1"},
+            {code:"MH-302",name:"ÜRİK ASİT (350 TEST)",target:11,date:"29.03.2027",lot:"842",loc:"G | 15 | 1"},
+            {code:"MH-302",name:"ÜRİK ASİT (350 TEST)",target:2,date:"19.04.2027",lot:"844",loc:"G | 15 | 1"}, // KRİTİK ÇİFT KAYIT
+            {code:"MH-442",name:"SODYUM (230 TEST)",target:2,date:"30.03.2026",lot:"012",loc:"G | 15 | 1"},
+            {code:"MH-462",name:"KLORÜR (236 TEST)",target:1,date:"30.03.2030",lot:"756",loc:"G | 15 | 1"},
+            {code:"MH-482",name:"LDH DGKC (326 TEST)",target:1,date:"30.08.2028",lot:"810",loc:"G | 15 | 1"}
         ];
 
-        // --- STATE ---
+        // --- GLOBAL DEĞİŞKENLER ---
         let inventory = [];
-        let barcodeMap = {}; // EAN -> StockCode
-        let lastScanned = null;
+        let barcodeMap = {}; // { "GTIN_BARKODU": "MH-302__842" }
+        let lastScanId = null;
         let tempBarcode = "";
+        
+        // Ses Efekti Context
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
         // --- BAŞLANGIÇ ---
         function init() {
-            // Kayıtlı veri var mı?
-            const savedInv = localStorage.getItem('stok_v5_data');
-            const savedMap = localStorage.getItem('stok_v5_map');
+            const savedInv = localStorage.getItem('stok_v8_inv');
+            const savedMap = localStorage.getItem('stok_v8_map');
 
             if(savedInv) {
                 inventory = JSON.parse(savedInv);
             } else {
-                // Yoksa gömülü veriyi kullan (Count'ları sıfırla)
-                inventory = embeddedData.map(i => ({...i, count: 0}));
+                // Ham veriye ID ve Count ekle
+                inventory = rawData.map(item => ({
+                    ...item,
+                    id: `${item.code}__${item.lot}`, // Benzersiz ID (Kod + Lot)
+                    count: 0
+                }));
             }
 
-            if(savedMap) {
-                barcodeMap = JSON.parse(savedMap);
-            }
+            if(savedMap) barcodeMap = JSON.parse(savedMap);
 
-            renderInventory();
-            updateStats();
+            renderList();
+            updateProgress();
             focusInput();
-            
+
             // Focus Koruma
             document.addEventListener('click', (e) => {
-                if(!e.target.closest('input') && !e.target.closest('button') && document.getElementById('link-modal').classList.contains('hidden')) {
+                const modal = document.getElementById('modal');
+                if(!e.target.closest('input') && !e.target.closest('button') && modal.classList.contains('hidden')) {
                     focusInput();
                 }
             });
         }
 
-        // --- DOSYA YÜKLEME ---
-        function handleFileUpload(input) {
-            const file = input.files[0];
-            if(!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const text = e.target.result;
-                const lines = text.split('\n');
-                
-                // Başlık satırını atla, veriyi parse et
-                // Beklenen Format: Stok Kodu;Stok İsim;Kalan Miktar;Son Kullanma Tarihi;LOT;Depo Adres
-                const newInv = [];
-                
-                for(let i=1; i<lines.length; i++) {
-                    const line = lines[i].trim();
-                    if(!line) continue;
-                    
-                    const cols = line.split(';'); // NOKTALI VİRGÜL AYIRACI
-                    if(cols.length < 3) continue;
-
-                    newInv.push({
-                        code: cols[0]?.trim(),
-                        name: cols[1]?.trim(),
-                        target: parseInt(cols[2]?.trim()) || 0,
-                        date: cols[3]?.trim() || '-',
-                        lot: cols[4]?.trim() || '-',
-                        loc: cols[5]?.trim() || '-'
-                    });
-                }
-
-                if(newInv.length > 0) {
-                    if(confirm(`${newInv.length} ürün bulundu. Mevcut liste silinip bu yüklensin mi?`)) {
-                        inventory = newInv.map(i => ({...i, count: 0}));
-                        lastScanned = null;
-                        saveData();
-                        renderInventory();
-                        updateStats();
-                        alert("Liste başarıyla yüklendi!");
-                    }
-                } else {
-                    alert("Hata: Dosya formatı uygun değil. Noktalı virgül (;) kullanıldığından emin ol.");
-                }
-            };
-            reader.readAsText(file, "UTF-8");
-        }
-
         // --- RENDER ---
-        function renderInventory() {
-            const container = document.getElementById('inventory-container');
-            container.innerHTML = '';
+        function renderList() {
+            const list = document.getElementById('inventory-list');
+            list.innerHTML = '';
 
             // Sıralama: Son Okunan > Eksikler > Tamamlananlar
             const sorted = [...inventory].sort((a, b) => {
-                if(a.code === lastScanned) return -1;
-                if(b.code === lastScanned) return 1;
+                if(a.id === lastScanId) return -1;
+                if(b.id === lastScanId) return 1;
                 
                 const aDone = a.count >= a.target;
                 const bDone = b.count >= b.target;
-                if(aDone === bDone) return 0;
-                return aDone ? 1 : -1;
+                if(aDone !== bDone) return aDone ? 1 : -1;
+                return 0;
             });
 
-            // Performans için ilk 50 öğe (Sanal scroll yok ama yeterli)
-            const displayList = sorted.slice(0, 100);
-
-            displayList.forEach(item => {
-                const isMatch = item.count === item.target;
-                const isOver = item.count > item.target;
-                const isProcess = item.count > 0 && !isMatch;
-                const isLast = item.code === lastScanned;
-
-                let statusClass = '';
-                let iconClass = 'fa-regular fa-circle text-slate-600';
-                let countColor = 'text-slate-400';
-
-                if(isOver) {
-                    statusClass = 'status-error';
-                    iconClass = 'fa-solid fa-triangle-exclamation text-red-500';
-                    countColor = 'text-red-500';
-                } else if(isMatch) {
-                    statusClass = 'status-ok';
-                    iconClass = 'fa-solid fa-circle-check text-green-500';
-                    countColor = 'text-green-500';
-                } else if(isProcess) {
-                    statusClass = 'status-process';
-                    iconClass = 'fa-solid fa-spinner fa-spin text-yellow-500';
-                    countColor = 'text-yellow-400';
+            sorted.forEach(item => {
+                const isLast = item.id === lastScanId;
+                const diff = item.count - item.target; // Fark Hesaplama
+                
+                let statusClass = 's-empty';
+                let countColor = 'text-slate-500';
+                
+                if(item.count > item.target) {
+                    statusClass = 's-over'; countColor = 'text-red-500';
+                } else if(item.count === item.target) {
+                    statusClass = 's-exact'; countColor = 'text-emerald-500';
+                } else if(item.count > 0) {
+                    statusClass = 's-under'; countColor = 'text-amber-500';
                 }
 
                 const html = `
-                    <div id="row-${item.code}" class="item-card relative bg-slate-800 rounded-lg p-3 mb-2 shadow-sm ${statusClass} ${isLast ? 'last-scanned' : ''}">
-                        <div class="flex justify-between items-start gap-3">
-                            <div class="flex-1 overflow-hidden">
-                                <div class="flex flex-wrap items-center gap-2 mb-1">
-                                    <span class="bg-slate-900 text-blue-400 px-2 py-0.5 rounded text-sm font-mono font-bold border border-slate-700">${item.code}</span>
-                                    <span class="text-[10px] text-slate-400 border border-slate-700 px-1.5 py-0.5 rounded bg-slate-900/50 flex items-center gap-1">
-                                        <i class="fa-solid fa-layer-group text-[9px]"></i> ${item.lot}
-                                    </span>
-                                    <span class="text-[10px] text-slate-400 border border-slate-700 px-1.5 py-0.5 rounded bg-slate-900/50 flex items-center gap-1">
-                                        <i class="fa-solid fa-calendar text-[9px]"></i> ${item.date}
-                                    </span>
-                                </div>
-                                <h4 class="text-slate-200 font-semibold text-sm leading-snug truncate" title="${item.name}">${item.name}</h4>
-                                <div class="mt-1 text-xs text-slate-400 flex items-center gap-1">
-                                    <i class="fa-solid fa-location-dot text-slate-500"></i> ${item.loc}
-                                </div>
+                    <div id="card-${item.id}" class="stock-card flex ${isLast ? 'scanned-active' : ''}">
+                        <div class="status-indicator ${statusClass}"></div>
+                        
+                        <div class="p-3 pl-4 flex-1">
+                            <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                <span class="text-blue-400 font-mono font-bold text-lg tracking-wide">${item.code}</span>
+                                <span class="badge-lot border-slate-600 text-slate-300">LOT: <span class="text-white font-bold">${item.lot}</span></span>
                             </div>
-                            
-                            <div class="flex flex-col items-end gap-1 min-w-[60px]">
-                                <div class="text-2xl font-bold mono leading-none flex items-baseline gap-1">
-                                    <span class="${countColor}">${item.count}</span>
-                                    <span class="text-xs text-slate-600">/${item.target}</span>
-                                </div>
-                                <div class="mt-1">${item.code === lastScanned ? '<span class="text-[10px] font-bold text-blue-500 animate-pulse">OKUNDU</span>' : `<i class="${iconClass}"></i>`}</div>
+                            <div class="text-sm text-slate-200 font-semibold leading-tight mb-2">${item.name}</div>
+                            <div class="flex gap-4 text-[10px] text-slate-500 font-mono uppercase tracking-wide">
+                                <span class="flex items-center gap-1"><i class="fa-regular fa-calendar"></i> ${item.date}</span>
+                                <span class="flex items-center gap-1"><i class="fa-solid fa-map-pin"></i> ${item.loc}</span>
                             </div>
                         </div>
-                        
-                        <div class="flex justify-end gap-2 mt-2 pt-2 border-t border-slate-700/50">
-                            <button onclick="updateCount('${item.code}', -1)" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-slate-300 text-xs font-bold transition border border-slate-600">-1</button>
-                            <button onclick="updateCount('${item.code}', 1)" class="px-5 py-1 bg-blue-600 hover:bg-blue-500 rounded text-white text-xs font-bold shadow-lg shadow-blue-500/20 transition">+1 EKLE</button>
+
+                        <!-- Sayaç Alanı -->
+                        <div class="flex flex-col items-center justify-center min-w-[85px] bg-slate-950/30 border-l border-slate-800">
+                            <div class="text-3xl font-bold font-mono ${countColor}">${item.count}</div>
+                            <div class="text-[10px] text-slate-600 border-t border-slate-800 w-full text-center mt-1 pt-1">
+                                HEDEF: <span class="text-slate-400">${item.target}</span>
+                            </div>
+                            <!-- Fark Göstergesi -->
+                            <div class="text-[10px] font-bold mt-0.5 ${diff > 0 ? 'text-red-500' : (diff < 0 ? 'text-amber-500' : 'text-emerald-600')}">
+                                FARK: ${diff > 0 ? '+' + diff : diff}
+                            </div>
+                        </div>
+
+                        <!-- Butonlar -->
+                        <div class="flex flex-col border-l border-slate-800 w-12">
+                            <button onclick="updateCount('${item.id}', 1)" class="flex-1 bg-slate-800 hover:bg-emerald-900/50 text-emerald-500 font-bold text-xl transition-colors">+</button>
+                            <button onclick="updateCount('${item.id}', -1)" class="h-10 border-t border-slate-800 bg-slate-800 hover:bg-red-900/50 text-red-500 font-bold transition-colors">-</button>
                         </div>
                     </div>
                 `;
-                container.insertAdjacentHTML('beforeend', html);
+                list.insertAdjacentHTML('beforeend', html);
             });
         }
 
-        // --- BARKOD İŞLEME ---
+        // --- BARKOD İŞLEME MANTIĞI (AKILLI SİSTEM) ---
         const inputEl = document.getElementById('barcodeInput');
-
+        
         inputEl.addEventListener('keydown', (e) => {
             if(e.key === 'Enter') {
                 const val = inputEl.value.trim().toUpperCase();
-                if(val) processScan(val);
+                if(val) handleScan(val);
                 inputEl.value = '';
             }
         });
 
         function focusInput() { inputEl.focus(); }
-        function clearInput() { inputEl.value = ''; focusInput(); }
 
-        function processScan(scan) {
-            // 1. Eşleşme kontrolü
-            let target = barcodeMap[scan];
-            
-            // 2. Direkt stok kodu mu?
-            if(!target) {
-                const direct = inventory.find(i => i.code === scan);
-                if(direct) target = scan;
+        function handleScan(raw) {
+            // 1. ÖĞRENİLMİŞ Mİ? (Daha önce eşleştirdin mi?)
+            if(barcodeMap[raw]) {
+                updateCount(barcodeMap[raw], 1);
+                return;
             }
 
-            if(target) {
-                updateCount(target, 1);
-            } else {
-                // Bilinmeyen Barkod
-                playBeep('error');
-                tempBarcode = scan;
-                openModal();
+            // 2. AKILLI ANALİZ (Barcode içinde LOT var mı?)
+            // Önce Stok Kodu ile eşleşenleri bul
+            let candidates = inventory.filter(i => raw.includes(i.code));
+
+            if(candidates.length === 1) {
+                // Sadece 1 tane ürün var (Tek lot), direkt say
+                updateCount(candidates[0].id, 1);
+                return;
+            } else if (candidates.length > 1) {
+                // Birden fazla lot var. Barkodun içinde LOT geçiyor mu bak?
+                let exactLot = candidates.find(i => raw.includes(i.lot));
+                if(exactLot) {
+                    updateCount(exactLot.id, 1);
+                    setStatus(`OTOMATİK LOT EŞLEŞMESİ: ${exactLot.lot}`, 'success');
+                    return;
+                }
             }
+
+            // 3. Direkt LOT Numarası mı girildi? (Örn: "844" yazıp enterladı)
+            let lotOnlyMatch = inventory.filter(i => i.lot === raw);
+            if(lotOnlyMatch.length === 1) {
+                 updateCount(lotOnlyMatch[0].id, 1);
+                 return;
+            }
+
+            // 4. BULUNAMADI -> MANUEL SEÇİM
+            tempBarcode = raw;
+            playSound('error');
+            openModal(candidates); // Eğer code eşleşmesi varsa onları öncelikli göster
         }
 
-        function updateCount(code, amount) {
-            const idx = inventory.findIndex(i => i.code === code);
+        function updateCount(id, amount) {
+            const idx = inventory.findIndex(i => i.id === id);
             if(idx === -1) return;
 
             const item = inventory[idx];
             const newVal = Math.max(0, item.count + amount);
             
             inventory[idx].count = newVal;
-            lastScanned = code;
+            lastScanId = id;
 
-            // Bildirim & Ses
-            const msgEl = document.getElementById('status-msg');
+            // Bildirim
             if(amount > 0) {
                 if(newVal > item.target) {
-                    playBeep('error');
-                    msgEl.innerHTML = `<span class="text-red-500">FAZLA: ${item.name}</span>`;
+                    playSound('error');
+                    setStatus(`FAZLA ÜRÜN: ${item.code} (LOT:${item.lot})`, 'error');
                 } else if(newVal === item.target) {
-                    playBeep('complete');
-                    msgEl.innerHTML = `<span class="text-green-500">TAMAMLANDI: ${item.name}</span>`;
+                    playSound('success');
+                    setStatus(`TAMAMLANDI: ${item.code}`, 'success');
                 } else {
-                    playBeep('success');
-                    msgEl.innerHTML = `<span class="text-blue-400">OKUNDU: ${item.name}</span>`;
+                    playSound('beep');
+                    setStatus(`OKUNDU: ${item.code}`, 'normal');
                 }
             } else {
-                msgEl.innerText = "Adet düşüldü.";
+                setStatus('İPTAL EDİLDİ', 'normal');
             }
 
-            saveData();
-            renderInventory();
-            updateStats();
+            save();
+            renderList();
+            updateProgress();
 
             // Scroll focus
             setTimeout(() => {
-                const el = document.getElementById(`row-${code}`);
+                const el = document.getElementById(`card-${id}`);
                 if(el) el.scrollIntoView({behavior: 'smooth', block: 'center'});
             }, 50);
         }
 
-        // --- İSTATİSTİK ---
-        function updateStats() {
-            const total = inventory.reduce((a, b) => a + b.target, 0);
-            const counted = inventory.reduce((a, b) => a + b.count, 0);
-            const remaining = Math.max(0, total - counted);
-
-            document.getElementById('stat-total').innerText = total;
-            document.getElementById('stat-counted').innerText = counted;
-            document.getElementById('stat-remaining').innerText = remaining;
-        }
-
-        function saveData() {
-            localStorage.setItem('stok_v5_data', JSON.stringify(inventory));
-            localStorage.setItem('stok_v5_map', JSON.stringify(barcodeMap));
-        }
-
         // --- MODAL ---
-        const modal = document.getElementById('link-modal');
+        const modal = document.getElementById('modal');
         const modalList = document.getElementById('modal-list');
-        const modalSearch = document.getElementById('modal-search');
 
-        function openModal() {
+        function openModal(priorityList = []) {
             modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            document.getElementById('modal-barcode-display').innerText = tempBarcode;
-            renderModalList('');
-            modalSearch.focus();
+            document.getElementById('modal-val').innerText = tempBarcode;
+            renderModalList(priorityList.length > 0 ? priorityList : inventory);
         }
 
         function closeModal() {
             modal.classList.add('hidden');
-            modal.classList.remove('flex');
-            tempBarcode = '';
+            tempBarcode = "";
             focusInput();
         }
 
-        function renderModalList(term) {
+        function renderModalList(list) {
             modalList.innerHTML = '';
-            const filtered = inventory.filter(i => 
-                i.name.toLowerCase().includes(term.toLowerCase()) || 
-                i.code.toLowerCase().includes(term.toLowerCase())
-            );
+            // Listeyi biraz daraltalım (arama filtresi eklenebilir ama şu an basitlik önemli)
+            // Eğer liste çok uzunsa sadece ilk 50'yi göster
+            const displayList = list.slice(0, 50);
 
-            if(filtered.length === 0) {
-                modalList.innerHTML = '<div class="text-center text-slate-500 py-4">Ürün bulunamadı.</div>';
+            if(displayList.length === 0) {
+                modalList.innerHTML = '<div class="text-center text-slate-500 py-4">Sonuç bulunamadı</div>';
                 return;
             }
 
-            filtered.forEach(item => {
+            displayList.forEach(item => {
                 const div = document.createElement('div');
-                div.className = "bg-slate-700/50 p-3 rounded border border-slate-600 flex justify-between items-center cursor-pointer hover:bg-slate-600 transition mb-2";
+                div.className = "bg-slate-800 p-3 rounded-lg border border-slate-700 flex justify-between items-center cursor-pointer hover:bg-slate-700 transition";
                 div.innerHTML = `
                     <div>
-                        <div class="text-white font-bold text-sm">${item.name}</div>
-                        <div class="text-xs text-blue-300 font-mono">${item.code}</div>
+                        <div class="flex items-center gap-2 mb-1">
+                             <span class="text-blue-400 font-bold font-mono">${item.code}</span>
+                             <span class="text-yellow-500 text-xs border border-yellow-600 px-1 rounded font-mono bg-yellow-900/20">LOT: ${item.lot}</span>
+                        </div>
+                        <div class="text-xs text-slate-400">${item.name}</div>
                     </div>
-                    <i class="fa-solid fa-link text-white/50"></i>
+                    <i class="fa-solid fa-arrow-right text-slate-500"></i>
                 `;
                 div.onclick = () => {
-                    barcodeMap[tempBarcode] = item.code;
+                    // Öğrenme
+                    barcodeMap[tempBarcode] = item.id;
                     closeModal();
-                    updateCount(item.code, 1);
-                    alert(`BAŞARILI: ${tempBarcode} artık ${item.code} olarak tanınacak.`);
+                    updateCount(item.id, 1);
+                    setStatus(`EŞLEŞTİRİLDİ: ${tempBarcode} -> ${item.lot}`, 'success');
                 };
                 modalList.appendChild(div);
             });
         }
 
-        modalSearch.addEventListener('input', (e) => renderModalList(e.target.value));
+        // --- YARDIMCILAR ---
+        function updateProgress() {
+            const total = inventory.reduce((a, b) => a + b.target, 0);
+            const current = inventory.reduce((a, b) => a + b.count, 0);
+            document.getElementById('progress-text').innerText = `${current} / ${total}`;
+        }
 
-        // --- EXPORT CSV ---
-        function exportCSV() {
-            let csv = "\uFEFFStok Kodu;Stok İsim;Hedef;Sayılan;Durum;Raf;LOT;SKT\n";
+        function setStatus(msg, type) {
+            const el = document.getElementById('status-msg');
+            el.innerText = msg;
+            if(type === 'error') el.className = "absolute -bottom-6 left-0 w-full text-center text-[10px] font-bold text-red-500 uppercase tracking-widest animate-pulse";
+            else if(type === 'success') el.className = "absolute -bottom-6 left-0 w-full text-center text-[10px] font-bold text-emerald-500 uppercase tracking-widest";
+            else el.className = "absolute -bottom-6 left-0 w-full text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest";
+        }
+
+        function save() {
+            localStorage.setItem('stok_v8_inv', JSON.stringify(inventory));
+            localStorage.setItem('stok_v8_map', JSON.stringify(barcodeMap));
+        }
+
+        function exportReport() {
+            // BOM (Byte Order Mark) Excel'in Türkçe karakterleri tanıması için şart
+            let csv = "\uFEFFStok Kodu;Stok İsim;Hedef Miktar;Sayılan Miktar;FARK;Durum;LOT;SKT;Raf\n";
+            
             inventory.forEach(i => {
+                const diff = i.count - i.target;
                 let status = i.count === i.target ? "TAMAM" : (i.count > i.target ? "FAZLA" : "EKSİK");
-                csv += `${i.code};"${i.name}";${i.target};${i.count};${status};"${i.loc}";"${i.lot}";"${i.date}"\n`;
+                
+                // CSV'ye yaz
+                csv += `${i.code};"${i.name}";${i.target};${i.count};${diff};${status};"${i.lot}";"${i.date}";"${i.loc}"\n`;
             });
+
             const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Sayim_Sonuc_${new Date().toLocaleDateString()}.csv`;
+            a.download = `Sayim_Fark_Raporu_${new Date().toLocaleDateString()}.csv`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
         }
 
-        // Başlat
-        init();
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
 
+            if(type === 'beep') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(800, now);
+                gain.gain.setValueAtTime(0.1, now); osc.stop(now + 0.1);
+            } else if(type === 'success') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(600, now);
+                osc.frequency.setValueAtTime(1200, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now); osc.stop(now + 0.15);
+            } else {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now);
+                gain.gain.setValueAtTime(0.2, now); osc.stop(now + 0.3);
+            }
+            osc.start(now);
+        }
+
+        init();
     </script>
 </body>
 </html>
+
 
