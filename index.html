@@ -2,353 +2,581 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>QR Scanner Elite</title>
-    
-    <!-- Tailwind CSS (Tasarım için) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IVD GTIN Stok & Sipariş</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Ikon Seti -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <!-- QR Kod Kütüphanesi -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-
-    <!-- Google Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
         
-        /* Lazer Tarama Animasyonu */
-        @keyframes scan {
-            0% { top: 10%; opacity: 0; box-shadow: 0 0 5px rgba(34,211,238,0); }
-            10% { opacity: 1; box-shadow: 0 0 15px rgba(34,211,238,0.8); }
-            90% { opacity: 1; box-shadow: 0 0 15px rgba(34,211,238,0.8); }
-            100% { top: 90%; opacity: 0; box-shadow: 0 0 5px rgba(34,211,238,0); }
+        /* Geçiş Efektleri */
+        .transition-height { transition: height 0.3s ease-in-out; }
+        
+        /* Durum Renkleri */
+        .row-verified { background-color: #dcfce7 !important; border-left: 5px solid #22c55e !important; }
+        .row-pending { background-color: #ffffff; border-left: 5px solid #cbd5e1; }
+        
+        /* Sipariş Menüsü Animasyonu */
+        #orderPanel {
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .animate-scan {
-            animation: scan 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        
+        /* GS1 Input Alanı Özel Stil */
+        .gs1-input:focus {
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+            border-color: #3b82f6;
         }
 
-        /* Gizli Scrollbar */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        /* Video elementinin tam oturması için */
-        #reader video {
-            object-fit: cover;
-            border-radius: 1.5rem;
-        }
+        /* Liste Scroll */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
 </head>
-<body class="bg-[#0f172a] text-white min-h-screen overflow-hidden selection:bg-cyan-500 selection:text-black">
+<body class="bg-slate-100 h-screen flex flex-col overflow-hidden">
 
-    <!-- Arka Plan Efektleri -->
-    <div class="fixed top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-600/20 rounded-full blur-[120px] pointer-events-none"></div>
-    <div class="fixed bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none"></div>
-
-    <!-- Header -->
-    <header className="relative z-10 flex items-center justify-between px-6 py-5 backdrop-blur-md bg-black/10 border-b border-white/5">
-        <div class="flex items-center justify-between px-6 py-5 relative z-20 backdrop-blur-md bg-black/10 border-b border-white/5">
+    <!-- Üst Header: Dosya Yükleme & Özet -->
+    <header class="bg-slate-800 text-white p-3 shadow-lg shrink-0 z-20">
+        <div class="flex justify-between items-center max-w-7xl mx-auto w-full">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-gradient-to-tr from-blue-600 to-cyan-400 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                    <i data-lucide="camera" class="text-white w-6 h-6"></i>
+                <div class="bg-blue-600 p-2 rounded-lg">
+                    <i class="fas fa-qrcode text-xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold tracking-tight">QR Elite</h1>
-                    <p class="text-xs text-gray-400 font-medium tracking-wider">PRO SCANNER</p>
+                    <h1 class="font-bold text-lg leading-tight">IVD GTIN Kontrol</h1>
+                    <div class="text-xs text-slate-400" id="fileStatus">Dosya Bekleniyor...</div>
                 </div>
             </div>
-            <button onclick="toggleHistory()" class="p-2.5 bg-white/5 hover:bg-white/10 rounded-full transition-all text-white">
-                <i data-lucide="history" class="w-5 h-5"></i>
-            </button>
+            
+            <label class="bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded cursor-pointer text-sm font-medium transition flex items-center gap-2 border border-slate-600">
+                <i class="fas fa-file-csv text-green-400"></i>
+                <span class="hidden sm:inline">CSV Yükle</span>
+                <input type="file" id="csvInput" accept=".csv" class="hidden" onchange="handleFileUpload(event)">
+            </label>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="relative z-10 max-w-lg mx-auto p-4 flex flex-col h-[calc(100vh-80px)] overflow-y-auto no-scrollbar">
-        
-        <!-- Tarayıcı Alanı -->
-        <div class="relative w-full aspect-square bg-black/40 rounded-3xl border border-white/10 shadow-2xl overflow-hidden backdrop-blur-sm group">
-            
-            <!-- Video Alanı -->
-            <div id="reader" class="w-full h-full object-cover"></div>
-
-            <!-- Placeholder (Kamera kapalıyken) -->
-            <div id="placeholder-ui" class="absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none">
-                <div class="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6 animate-pulse">
-                    <i data-lucide="camera" class="w-10 h-10 text-white/30"></i>
-                </div>
-                <h2 class="text-xl font-medium text-white/80">Taramaya Hazır</h2>
-                <p class="text-sm text-gray-500 mt-2 text-center max-w-[200px]">Kamerayı QR koda doğrultun veya dosya yükleyin</p>
+    <!-- Karekod Okuma Alanı (Sabit) -->
+    <div class="bg-white border-b border-slate-200 p-4 shrink-0 z-10">
+        <div class="max-w-4xl mx-auto">
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">GTIN / Karekod Okut (GS1)</label>
+            <div class="relative">
+                <input type="text" id="gs1Input" 
+                    class="w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:outline-none gs1-input transition-all"
+                    placeholder="(01)GTIN...(17)SKT...(10)LOT...(21)SN..." 
+                    autocomplete="off" disabled>
+                <i class="fas fa-barcode absolute left-3 top-3.5 text-slate-400 text-lg"></i>
+                <div id="scanStatus" class="absolute right-3 top-3 text-sm font-bold text-slate-400">Hazır</div>
             </div>
-
-            <!-- Vizör (Kamera açıkken) -->
-            <div id="scanner-overlay" class="absolute inset-0 z-30 pointer-events-none hidden">
-                <!-- Köşeler -->
-                <div class="absolute top-8 left-8 w-12 h-12 border-l-4 border-t-4 border-cyan-500 rounded-tl-xl"></div>
-                <div class="absolute top-8 right-8 w-12 h-12 border-r-4 border-t-4 border-cyan-500 rounded-tr-xl"></div>
-                <div class="absolute bottom-8 left-8 w-12 h-12 border-l-4 border-b-4 border-cyan-500 rounded-bl-xl"></div>
-                <div class="absolute bottom-8 right-8 w-12 h-12 border-r-4 border-b-4 border-cyan-500 rounded-br-xl"></div>
-                <!-- Lazer -->
-                <div class="absolute left-8 right-8 h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent animate-scan"></div>
+            <div class="flex gap-2 mt-2 text-xs text-slate-400">
+                <span><i class="fas fa-info-circle"></i> Otomatik Parçalama:</span>
+                <span class="bg-slate-100 px-1 rounded border">01 GTIN</span>
+                <span class="bg-slate-100 px-1 rounded border">17 SKT</span>
+                <span class="bg-slate-100 px-1 rounded border">10 LOT</span>
+                <span class="bg-slate-100 px-1 rounded border">21 SN</span>
             </div>
         </div>
+    </div>
 
-        <!-- Kontrol Butonları -->
-        <div class="mt-8 flex flex-col gap-4">
-            
-            <!-- Başlangıç Butonları -->
-            <div id="start-controls" class="grid grid-cols-2 gap-4">
-                <button onclick="startScanning()" class="col-span-1 bg-white text-black h-14 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-gray-100 transition-transform active:scale-95 shadow-lg shadow-white/5">
-                    <i data-lucide="video" class="w-5 h-5"></i>
-                    CANLI TARA
-                </button>
-                
-                <div class="col-span-1 relative">
-                    <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleFile(this)">
-                    <button onclick="document.getElementById('file-input').click()" class="w-full h-14 bg-white/10 border border-white/10 backdrop-blur-md rounded-2xl font-semibold flex items-center justify-center gap-2 hover:bg-white/20 transition-all text-white">
-                        <i data-lucide="upload" class="w-5 h-5"></i>
-                        RESİM YÜKLE
-                    </button>
-                </div>
-            </div>
+    <!-- Ana Envanter Listesi -->
+    <main class="flex-1 overflow-y-auto p-4 custom-scroll relative" id="mainContainer">
+        <!-- Boş Durum -->
+        <div id="emptyState" class="flex flex-col items-center justify-center h-full text-slate-400 opacity-60">
+            <i class="fas fa-cloud-upload-alt text-6xl mb-4"></i>
+            <h2 class="text-xl font-bold">Lütfen "Stok1.csv" dosyasını yükleyin</h2>
+        </div>
 
-            <!-- Çalışırken Görünen Kontroller -->
-            <div id="active-controls" class="hidden flex items-center justify-center gap-6 bg-black/40 backdrop-blur-md p-4 rounded-3xl border border-white/10">
-                <button onclick="stopScanning()" class="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg shadow-red-500/30 transition-transform active:scale-90 text-white">
-                    <i data-lucide="x" class="w-8 h-8"></i>
-                </button>
-            </div>
+        <!-- Ürün Kartları Grid -->
+        <div id="inventoryList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 hidden max-w-7xl mx-auto pb-24">
+            <!-- JS ile dolacak -->
         </div>
     </main>
 
-    <!-- Sonuç Modal (Overlay) -->
-    <div id="result-modal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm hidden transition-opacity duration-300">
-        <div class="w-full max-w-md bg-[#1e293b] sm:rounded-3xl rounded-t-3xl border border-white/10 shadow-2xl p-6 relative animate-in slide-in-from-bottom-10">
-            
-            <button onclick="closeModal()" class="absolute top-4 right-4 p-2 bg-white/5 rounded-full hover:bg-white/10 text-gray-400">
-                <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
+    <!-- Sipariş Ekleme Alanı (Açılır/Kapanır Panel) -->
+    <div id="orderPanel" class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 transform translate-y-[calc(100%-60px)] h-[80vh] flex flex-col">
+        
+        <!-- Panel Tutamağı (Aç/Kapa) -->
+        <div onclick="toggleOrderPanel()" class="bg-slate-50 hover:bg-slate-100 cursor-pointer p-2 flex justify-between items-center border-b border-slate-200 px-4 h-[60px] shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="bg-orange-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-sm">
+                    <i class="fas fa-shopping-cart text-sm"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800">Sipariş Oluştur</h3>
+                    <p class="text-xs text-slate-500"><span id="orderCount">0</span> Kalem Ürün</p>
+                </div>
+            </div>
+            <div class="text-slate-400">
+                <i id="panelIcon" class="fas fa-chevron-up text-xl"></i>
+            </div>
+        </div>
 
-            <div class="flex flex-col items-center text-center -mt-10">
-                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 p-0.5 shadow-lg shadow-cyan-500/30">
-                    <div class="w-full h-full bg-[#1e293b] rounded-2xl flex items-center justify-center">
-                        <i id="result-icon" data-lucide="check" class="w-10 h-10 text-cyan-400"></i>
+        <!-- Panel İçeriği -->
+        <div class="flex-1 flex flex-col p-4 overflow-hidden bg-white">
+            
+            <!-- Sipariş Ürün Ekleme Inputu -->
+            <div class="flex gap-2 mb-4">
+                <div class="relative flex-1">
+                    <input type="text" id="orderSearchInput" 
+                        oninput="searchForOrder(this.value)"
+                        class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none uppercase" 
+                        placeholder="Ürün Kodu Yaz (Örn: MH-013)">
+                    <i class="fas fa-search absolute left-3 top-3 text-slate-400 text-xs"></i>
+                    
+                    <!-- Autocomplete Dropdown -->
+                    <div id="autocompleteResults" class="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto hidden">
+                        <!-- Sonuçlar buraya -->
                     </div>
                 </div>
-                
-                <h3 class="mt-4 text-xl font-bold text-white">Tarama Başarılı</h3>
-                <span id="result-format" class="text-xs text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded mt-1 font-mono">QR_CODE</span>
+            </div>
 
-                <div class="w-full mt-6 bg-black/30 rounded-xl p-4 border border-white/5 text-left">
-                    <p id="result-text" class="text-gray-300 font-mono text-sm break-all max-h-32 overflow-y-auto">
-                        ...
-                    </p>
+            <!-- Sipariş Tablosu -->
+            <div class="flex-1 overflow-y-auto border border-slate-200 rounded-lg">
+                <table class="w-full text-sm text-left text-slate-600">
+                    <thead class="text-xs text-slate-700 uppercase bg-slate-50 sticky top-0">
+                        <tr>
+                            <th class="px-4 py-3">Kod</th>
+                            <th class="px-4 py-3">Ürün Adı</th>
+                            <th class="px-4 py-3 text-center">Adet</th>
+                            <th class="px-4 py-3 text-right">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orderTableBody">
+                        <!-- Sipariş satırları -->
+                    </tbody>
+                </table>
+                <div id="emptyOrder" class="text-center py-8 text-slate-400">
+                    <p>Henüz sipariş eklenmedi.</p>
                 </div>
+            </div>
 
-                <div class="grid grid-cols-2 gap-3 w-full mt-6">
-                    <button onclick="copyResult()" class="flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white py-3.5 rounded-xl font-medium border border-white/5">
-                        <i data-lucide="copy" class="w-4 h-4"></i>
-                        Kopyala
-                    </button>
-                    <a id="result-link" href="#" target="_blank" class="hidden flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-500 text-white py-3.5 rounded-xl font-medium shadow-lg shadow-cyan-900/20">
-                        <i data-lucide="external-link" class="w-4 h-4"></i>
-                        Bağlantıyı Aç
-                    </a>
-                </div>
+            <!-- Sipariş Aksiyonları -->
+            <div class="mt-4 flex gap-3 shrink-0">
+                <button onclick="clearOrder()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium text-sm">Temizle</button>
+                <button onclick="exportOrder()" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white py-2 rounded-lg font-bold shadow-md flex justify-center items-center gap-2">
+                    <i class="fas fa-paper-plane"></i> Siparişi Tamamla (Excel)
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Geçmiş Modal -->
-    <div id="history-modal" class="fixed inset-0 z-40 bg-[#0f172a] transform translate-x-full transition-transform duration-300 p-6 overflow-y-auto">
-        <div class="flex items-center justify-between mb-6">
-            <h2 class="text-2xl font-bold flex items-center gap-2">
-                <i data-lucide="history" class="text-cyan-400"></i>
-                Geçmiş
-            </h2>
-            <button onclick="toggleHistory()" class="p-2 bg-white/5 rounded-full text-white">
-                <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
-        </div>
-        <div id="history-list" class="space-y-4">
-            <!-- Geçmiş elemanları buraya gelecek -->
-            <p class="text-gray-500 text-center mt-10">Henüz kayıt yok.</p>
-        </div>
+    <!-- Bildirim -->
+    <div id="toast" class="fixed top-20 right-4 bg-slate-800 text-white px-4 py-3 rounded shadow-lg transform translate-x-full transition-transform duration-300 z-50 flex items-center gap-3">
+        <div id="toastIcon"></div>
+        <div id="toastMsg">Bildirim</div>
     </div>
 
-    <!-- JAVASCRIPT LOGIC -->
     <script>
-        // İkonları oluştur
-        lucide.createIcons();
+        // --- Durum Yönetimi ---
+        let inventory = []; // CSV Verisi
+        let orderList = []; // Sipariş Listesi
+        let isPanelOpen = false;
 
-        let html5QrCode;
-        let isScanning = false;
-        let scanHistory = [];
+        // --- CSV İşlemleri ---
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
 
-        // Ses Efekti
-        const playBeep = () => {
-            try {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContext) return;
-                const ctx = new AudioContext();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(1200, ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.15);
-                gain.gain.setValueAtTime(0.1, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-                osc.start();
-                osc.stop(ctx.currentTime + 0.15);
-            } catch (e) {}
-        };
-
-        function startScanning() {
-            html5QrCode = new Html5Qrcode("reader");
-            const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
-            
-            html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
-            .then(() => {
-                isScanning = true;
-                updateUI(true);
-            })
-            .catch(err => {
-                alert("Kamera başlatılamadı! Lütfen izin verdiğinizden emin olun (HTTPS gerekli).");
-            });
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                parseCSV(e.target.result);
+            };
+            reader.readAsText(file, 'ISO-8859-9'); // Türkçe karakter desteği
         }
 
-        function stopScanning() {
-            if (html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    html5QrCode.clear();
-                    isScanning = false;
-                    updateUI(false);
-                }).catch(err => console.log(err));
+        function parseCSV(csvText) {
+            const lines = csvText.split(/\r\n|\n/);
+            inventory = [];
+
+            // Başlık satırını atla, veriyi işle
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                const cols = line.split(';');
+                if (cols.length < 5) continue;
+
+                // Stok1.csv Yapısı: KOD; İSİM; MİKTAR; SKT; LOT; ADRES
+                inventory.push({
+                    id: i,
+                    code: cols[0] || '',
+                    name: cols[1] || '',
+                    qty: parseInt(cols[2]) || 0,
+                    expiry: cols[3] || '',
+                    lot: cols[4] || '', // LOT Kritik Eşleşme Alanı
+                    location: cols[5] || '',
+                    status: 'pending', // pending | verified
+                    scannedData: null // Okutulan SN, GTIN bilgisi buraya
+                });
             }
-        }
 
-        function onScanSuccess(decodedText, decodedResult) {
-            playBeep();
-            if (navigator.vibrate) navigator.vibrate(50);
+            // UI Güncelle
+            document.getElementById('fileStatus').innerText = `${inventory.length} ürün yüklendi.`;
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('inventoryList').classList.remove('hidden');
+            document.getElementById('gs1Input').disabled = false;
+            document.getElementById('gs1Input').focus();
             
-            stopScanning();
-            showResult(decodedText, decodedResult);
-            addToHistory(decodedText);
+            renderInventory();
         }
 
-        function handleFile(input) {
-            if (input.files.length === 0) return;
-            const file = input.files[0];
+        // --- GS1 Karekod Ayrıştırıcı (Parser) ---
+        // Bu fonksiyon GTIN(01), Expiry(17), Lot(10), SN(21) ayıklar.
+        function parseGS1(rawString) {
+            let data = { gtin: '', expiry: '', lot: '', sn: '' };
+            let str = rawString.trim();
+
+            // Parantezleri temizle (bazı okuyucular (01) şeklinde okur)
+            // Amaç ham veriyi temiz bir stringe veya kurallı yapıya çevirmek
             
-            const reader = new Html5Qrcode("reader");
-            // Dosya tararken geçici instance kullanıyoruz, sonra temizliyoruz
-            reader.scanFileV2(file, true)
-            .then(decodedResult => {
-                onScanSuccess(decodedResult.decodedText, decodedResult);
-            })
-            .catch(err => {
-                alert("Görüntüde QR kod bulunamadı.");
-            });
+            // Basit Regex Yaklaşımı (Karekod içeriğine göre değişebilir, en yaygın formata göre):
+            // 01(14 hane) + 17(6 hane) + 10(Değişken) + 21(Değişken)
+            
+            // 1. GTIN (01) Bulma
+            let gtinMatch = str.match(/01(\d{14})/);
+            if (!gtinMatch) gtinMatch = str.match(/\(01\)(\d{14})/);
+            if (gtinMatch) {
+                data.gtin = gtinMatch[1];
+                // Stringi kısalt
+                // str = str.replace(gtinMatch[0], ''); // Kısaltma riskli olabilir, index üzerinden gidelim
+            }
+
+            // 2. LOT (10) Bulma - Kritik Eşleşme Noktası
+            // Genelde 10 dan sonra Group Separator (GS) gelir veya string biter veya 17/21 başlar.
+            // Basitçe (10)LOT123(17) veya 10LOT12317...
+            
+            // Regex: 10 ile başla, sonra alfanümerik al, sonra (21|17|11|30) gibi diğer AI'lara kadar dur.
+            // Bu kısım complex, basitleştirelim:
+            // Birçok barkod okuyucu parantezli gönderir: (01)...(10)...
+            
+            const aiRegex = /\((\d{2,4})\)([^(]+)/g;
+            let match;
+            let foundAI = false;
+
+            while ((match = aiRegex.exec(str)) !== null) {
+                foundAI = true;
+                const ai = match[1];
+                const val = match[2];
+                if (ai === '01') data.gtin = val;
+                if (ai === '10') data.lot = val;
+                if (ai === '17') data.expiry = val; // YYMMDD
+                if (ai === '21') data.sn = val;
+            }
+
+            // Eğer parantezsiz geliyorsa (GS1-128 raw format)
+            if (!foundAI && str.length > 14) {
+                // Manuel Parsing (Varsayım: 01 ve 17 sabit uzunluktadır)
+                // Örn: 01999999999999991725010110LOTXYZ
+                let idx = str.indexOf('01');
+                if (idx !== -1) {
+                    data.gtin = str.substr(idx + 2, 14);
+                }
+                
+                // 17 (SKT) genellikle GTIN den sonra gelir veya bağımsızdır
+                let idx17 = str.indexOf('17', idx + 16); 
+                if (idx17 !== -1 && idx17 < idx + 20) { // GTIN'den hemen sonra ise
+                     data.expiry = str.substr(idx17 + 2, 6);
+                }
+
+                // 10 (LOT)
+                let idx10 = str.indexOf('10');
+                // Bu çok riskli çünkü "10" rakamı GTIN içinde de olabilir.
+                // En güvenlisi LOT eşleşmesini inventory'den aramak.
+                
+                // --- ALTERNATİF YAKLAŞIM: STRİNG İÇİNDE CSV'DEKİ LOT'U ARA ---
+                // Eğer tam parse edemiyorsak, okutulan string içinde inventory'deki LOT var mı diye bakarız.
+            }
+
+            return data;
         }
 
-        // --- UI İşlemleri ---
+        // --- Input Dinleyicisi ---
+        const gs1Input = document.getElementById('gs1Input');
+        gs1Input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const rawVal = gs1Input.value;
+                if (rawVal.length > 3) {
+                    processScan(rawVal);
+                }
+                gs1Input.value = ''; // Temizle
+            }
+        });
 
-        function updateUI(scanning) {
-            const placeholder = document.getElementById('placeholder-ui');
-            const overlay = document.getElementById('scanner-overlay');
-            const startControls = document.getElementById('start-controls');
-            const activeControls = document.getElementById('active-controls');
+        function processScan(rawVal) {
+            // 1. Önce kaba kuvvet ile LOT eşleşmesi ara (Parsing hatasına karşı en güvenlisi)
+            // Stringin içinde Inventory'deki herhangi bir LOT geçiyor mu?
+            
+            let foundItem = null;
+            
+            // Strateji: Önce ham string parse edilmeye çalışılır
+            let parsed = parseGS1(rawVal);
+            
+            // Eğer parser LOT bulduysa o LOT'u ara
+            if (parsed.lot) {
+                foundItem = inventory.find(i => i.lot === parsed.lot);
+            } 
+            
+            // Parser bulamadıysa veya eşleşmediyse, Raw String içinde LOT ara (Contains)
+            if (!foundItem) {
+                foundItem = inventory.find(i => rawVal.includes(i.lot) && i.lot.length > 2);
+            }
 
-            if (scanning) {
-                placeholder.classList.add('hidden');
-                overlay.classList.remove('hidden');
-                startControls.classList.add('hidden');
-                activeControls.classList.remove('hidden');
-                activeControls.classList.add('flex');
+            // --- SONUÇ ---
+            if (foundItem) {
+                // Eşleşme Başarılı
+                foundItem.status = 'verified';
+                foundItem.scannedData = {
+                    raw: rawVal,
+                    gtin: parsed.gtin || 'Bilinmiyor',
+                    sn: parsed.sn || 'Bilinmiyor',
+                    timestamp: new Date().toLocaleTimeString()
+                };
+
+                // UI Güncelle
+                updateRowUI(foundItem.id);
+                showToast(`Doğrulandı: ${foundItem.name}`, 'success');
+                playSound('success');
             } else {
-                placeholder.classList.remove('hidden');
-                overlay.classList.add('hidden');
-                startControls.classList.remove('hidden');
-                activeControls.classList.add('hidden');
-                activeControls.classList.remove('flex');
+                // Eşleşme Yok
+                showToast('HATA: Ürün/LOT CSV dosyasında bulunamadı!', 'error');
+                playSound('error');
             }
         }
 
-        function showResult(text, resultObj) {
-            const modal = document.getElementById('result-modal');
-            const resultText = document.getElementById('result-text');
-            const resultFormat = document.getElementById('result-format');
-            const resultLink = document.getElementById('result-link');
-            const resultIcon = document.getElementById('result-icon');
-
-            resultText.innerText = text;
-            resultFormat.innerText = resultObj?.result?.format?.formatName || 'QR_CODE';
-            
-            modal.classList.remove('hidden');
-
-            // URL Kontrolü
-            const isUrl = text.startsWith('http');
-            if (isUrl) {
-                resultLink.classList.remove('hidden');
-                resultLink.classList.add('flex');
-                resultLink.href = text;
-                resultIcon.setAttribute('data-lucide', 'globe');
-            } else {
-                resultLink.classList.add('hidden');
-                resultLink.classList.remove('flex');
-                resultIcon.setAttribute('data-lucide', 'align-left');
-            }
-            lucide.createIcons();
-        }
-
-        function closeModal() {
-            document.getElementById('result-modal').classList.add('hidden');
-        }
-
-        function copyResult() {
-            const text = document.getElementById('result-text').innerText;
-            navigator.clipboard.writeText(text);
-            alert("Kopyalandı!");
-        }
-
-        // --- Geçmiş ---
-
-        function addToHistory(text) {
-            const now = new Date().toLocaleTimeString();
-            scanHistory.unshift({ text, time: now });
-            renderHistory();
-        }
-
-        function toggleHistory() {
-            const modal = document.getElementById('history-modal');
-            if (modal.classList.contains('translate-x-full')) {
-                modal.classList.remove('translate-x-full');
-            } else {
-                modal.classList.add('translate-x-full');
+        function updateRowUI(id) {
+            const el = document.getElementById(`card-${id}`);
+            if (el) {
+                el.classList.remove('row-pending');
+                el.classList.add('row-verified');
+                el.classList.add('scale-105'); // Efekt
+                setTimeout(() => el.classList.remove('scale-105'), 300);
+                
+                // Verified iconu göster
+                const icon = el.querySelector('.status-icon');
+                icon.innerHTML = '<i class="fas fa-check-circle text-green-600 text-2xl"></i>';
+                
+                // Otomatik scroll (opsiyonel)
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
 
-        function renderHistory() {
-            const list = document.getElementById('history-list');
-            if (scanHistory.length === 0) return;
+        // --- Arayüz Render ---
+        function renderInventory() {
+            const container = document.getElementById('inventoryList');
+            container.innerHTML = '';
 
-            list.innerHTML = scanHistory.map(item => `
-                <div class="bg-white/5 p-4 rounded-xl border border-white/5 flex items-center justify-between">
-                    <div class="overflow-hidden">
-                        <p class="text-sm font-medium text-white truncate w-48">${item.text}</p>
-                        <p class="text-xs text-gray-500">${item.time}</p>
+            inventory.forEach(item => {
+                const isVerified = item.status === 'verified';
+                const statusClass = isVerified ? 'row-verified' : 'row-pending';
+                
+                const card = document.createElement('div');
+                card.id = `card-${item.id}`;
+                card.className = `p-4 rounded-lg shadow-sm border border-slate-200 transition-all duration-300 ${statusClass}`;
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="bg-slate-700 text-white text-xs font-bold px-2 py-1 rounded">${item.code}</span>
+                            <h3 class="font-bold text-slate-800 mt-2">${item.name}</h3>
+                        </div>
+                        <div class="status-icon">
+                            ${isVerified 
+                                ? '<i class="fas fa-check-circle text-green-600 text-2xl"></i>' 
+                                : '<i class="far fa-circle text-slate-300 text-2xl"></i>'}
+                        </div>
                     </div>
-                    <button onclick="navigator.clipboard.writeText('${item.text}')" class="text-cyan-400 p-2">
-                        <i data-lucide="copy" class="w-4 h-4"></i>
-                    </button>
-                </div>
-            `).join('');
-            lucide.createIcons();
+                    
+                    <div class="mt-3 grid grid-cols-2 gap-2 text-sm text-slate-600">
+                        <div class="bg-slate-50 p-1 rounded px-2 border border-slate-100">
+                            <span class="text-xs text-slate-400 block">LOT</span>
+                            <span class="font-mono font-bold">${item.lot}</span>
+                        </div>
+                        <div class="bg-slate-50 p-1 rounded px-2 border border-slate-100">
+                            <span class="text-xs text-slate-400 block">SKT</span>
+                            <span>${item.expiry}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-2 text-xs text-slate-400 flex justify-between items-center">
+                        <span><i class="fas fa-map-marker-alt"></i> ${item.location}</span>
+                        <span class="font-bold text-slate-600">${item.qty} Adet</span>
+                    </div>
+                    
+                    ${isVerified && item.scannedData.sn !== '' ? 
+                        `<div class="mt-2 pt-2 border-t border-green-200 text-xs text-green-700 font-mono">
+                            SN: ${item.scannedData.sn}
+                         </div>` : ''}
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // --- Sipariş (Sepet) İşlemleri ---
+        function toggleOrderPanel() {
+            const panel = document.getElementById('orderPanel');
+            const icon = document.getElementById('panelIcon');
+            
+            if (isPanelOpen) {
+                // Kapat
+                panel.style.transform = 'translateY(calc(100% - 60px))';
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+                document.getElementById('gs1Input').focus(); // Focusu geri al
+            } else {
+                // Aç
+                panel.style.transform = 'translateY(0)';
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+                setTimeout(() => document.getElementById('orderSearchInput').focus(), 300);
+            }
+            isPanelOpen = !isPanelOpen;
+        }
+
+        // Sipariş Arama
+        function searchForOrder(val) {
+            const resultsDiv = document.getElementById('autocompleteResults');
+            if (val.length < 2) {
+                resultsDiv.classList.add('hidden');
+                return;
+            }
+
+            const matches = inventory.filter(i => 
+                i.code.toLowerCase().includes(val.toLowerCase()) || 
+                i.name.toLowerCase().includes(val.toLowerCase())
+            ).slice(0, 5); // İlk 5 sonuç
+
+            resultsDiv.innerHTML = '';
+            
+            if (matches.length > 0) {
+                matches.forEach(m => {
+                    const div = document.createElement('div');
+                    div.className = "p-2 hover:bg-orange-50 cursor-pointer border-b border-slate-100";
+                    div.innerHTML = `<span class="font-bold text-slate-700">${m.code}</span> - ${m.name} <span class="text-xs text-slate-400">(${m.qty} Mevcut)</span>`;
+                    div.onclick = () => addToOrder(m);
+                    resultsDiv.appendChild(div);
+                });
+                resultsDiv.classList.remove('hidden');
+            } else {
+                resultsDiv.classList.add('hidden');
+            }
+        }
+
+        function addToOrder(item) {
+            // Listede var mı kontrol et
+            const existing = orderList.find(o => o.code === item.code);
+            
+            if (existing) {
+                existing.orderQty++;
+            } else {
+                orderList.push({
+                    code: item.code,
+                    name: item.name,
+                    lot: item.lot,
+                    orderQty: 1
+                });
+            }
+
+            renderOrderList();
+            document.getElementById('orderSearchInput').value = '';
+            document.getElementById('autocompleteResults').classList.add('hidden');
+            document.getElementById('orderSearchInput').focus();
+        }
+
+        function renderOrderList() {
+            const tbody = document.getElementById('orderTableBody');
+            tbody.innerHTML = '';
+            
+            orderList.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-slate-100 hover:bg-slate-50";
+                tr.innerHTML = `
+                    <td class="px-4 py-3 font-medium text-slate-800">${item.code}</td>
+                    <td class="px-4 py-3 truncate max-w-[150px]">${item.name}</td>
+                    <td class="px-4 py-3 text-center">
+                        <div class="flex items-center justify-center gap-1">
+                            <button onclick="changeOrderQty(${index}, -1)" class="w-6 h-6 bg-slate-200 rounded text-slate-600 font-bold hover:bg-slate-300">-</button>
+                            <span class="w-8 text-center font-bold">${item.orderQty}</span>
+                            <button onclick="changeOrderQty(${index}, 1)" class="w-6 h-6 bg-slate-200 rounded text-slate-600 font-bold hover:bg-slate-300">+</button>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        <button onclick="removeOrderLine(${index})" class="text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('orderCount').innerText = orderList.length;
+            
+            if(orderList.length > 0) document.getElementById('emptyOrder').classList.add('hidden');
+            else document.getElementById('emptyOrder').classList.remove('hidden');
+        }
+
+        function changeOrderQty(index, delta) {
+            if (orderList[index].orderQty + delta > 0) {
+                orderList[index].orderQty += delta;
+                renderOrderList();
+            }
+        }
+
+        function removeOrderLine(index) {
+            orderList.splice(index, 1);
+            renderOrderList();
+        }
+
+        function clearOrder() {
+            if(confirm('Sipariş listesi temizlensin mi?')) {
+                orderList = [];
+                renderOrderList();
+            }
+        }
+
+        function exportOrder() {
+            if (orderList.length === 0) return alert('Liste boş');
+            
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+            csvContent += "Stok Kodu;Urun Adi;LOT;Siparis Adedi\n";
+            
+            orderList.forEach(row => {
+                csvContent += `${row.code};${row.name};${row.lot};${row.orderQty}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Siparis_Listesi_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- Yardımcılar ---
+        function showToast(msg, type) {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const text = document.getElementById('toastMsg');
+            
+            text.innerText = msg;
+            
+            if (type === 'success') {
+                toast.className = "fixed top-20 right-4 bg-green-600 text-white px-4 py-3 rounded shadow-lg transform transition-transform duration-300 z-50 flex items-center gap-3";
+                icon.innerHTML = '<i class="fas fa-check-circle"></i>';
+            } else {
+                toast.className = "fixed top-20 right-4 bg-red-600 text-white px-4 py-3 rounded shadow-lg transform transition-transform duration-300 z-50 flex items-center gap-3";
+                icon.innerHTML = '<i class="fas fa-exclamation-circle"></i>';
+            }
+
+            toast.classList.remove('translate-x-full');
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+            }, 3000);
+        }
+
+        // Ses Efekti (Opsiyonel)
+        function playSound(type) {
+            // Basit bip sesleri eklenebilir
         }
 
     </script>
