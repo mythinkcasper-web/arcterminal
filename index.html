@@ -2,583 +2,624 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IVD GTIN Stok & Sipariş</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>IVD Lojistik Pro v2</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bwip-js/3.0.4/bwip-js-min.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         
-        /* Geçiş Efektleri */
-        .transition-height { transition: height 0.3s ease-in-out; }
+        /* Aktif Menü Efekti */
+        .nav-item.active { color: #2563eb; }
+        .nav-item.active i { transform: translateY(-2px); }
+        .nav-item.active .nav-label { font-weight: 700; }
         
-        /* Durum Renkleri */
-        .row-verified { background-color: #dcfce7 !important; border-left: 5px solid #22c55e !important; }
-        .row-pending { background-color: #ffffff; border-left: 5px solid #cbd5e1; }
+        /* Scanner Alanı */
+        #reader video { object-fit: cover; border-radius: 12px; }
         
-        /* Sipariş Menüsü Animasyonu */
-        #orderPanel {
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        /* GS1 Input Alanı Özel Stil */
-        .gs1-input:focus {
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
-            border-color: #3b82f6;
-        }
+        /* Scrollbar Gizleme */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* Liste Scroll */
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        /* Yazdırma Alanı */
+        @media screen { #printArea { display: none; } }
+        @media print {
+            body * { visibility: hidden; }
+            #printArea, #printArea * { visibility: visible; }
+            #printArea { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
+        }
     </style>
 </head>
-<body class="bg-slate-100 h-screen flex flex-col overflow-hidden">
+<body class="bg-slate-100 h-screen flex flex-col overflow-hidden text-slate-800">
 
-    <!-- Üst Header: Dosya Yükleme & Özet -->
-    <header class="bg-slate-800 text-white p-3 shadow-lg shrink-0 z-20">
-        <div class="flex justify-between items-center max-w-7xl mx-auto w-full">
-            <div class="flex items-center gap-3">
-                <div class="bg-blue-600 p-2 rounded-lg">
-                    <i class="fas fa-qrcode text-xl"></i>
-                </div>
-                <div>
-                    <h1 class="font-bold text-lg leading-tight">IVD GTIN Kontrol</h1>
-                    <div class="text-xs text-slate-400" id="fileStatus">Dosya Bekleniyor...</div>
-                </div>
+    <!-- HEADER -->
+    <header class="bg-white border-b border-gray-200 px-4 py-3 shrink-0 z-20 flex justify-between items-center shadow-sm h-16">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-md shadow-indigo-200">
+                <i class="fas fa-cubes"></i>
             </div>
-            
-            <label class="bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded cursor-pointer text-sm font-medium transition flex items-center gap-2 border border-slate-600">
-                <i class="fas fa-file-csv text-green-400"></i>
-                <span class="hidden sm:inline">CSV Yükle</span>
+            <div>
+                <h1 class="font-bold text-lg leading-none tracking-tight text-slate-800">IVD PRO <span class="text-xs text-indigo-500 bg-indigo-50 px-1 rounded">v2</span></h1>
+                <p class="text-[10px] text-gray-400 font-medium" id="headerStatus">Veri Bekleniyor...</p>
+            </div>
+        </div>
+        <div>
+            <label class="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 cursor-pointer transition text-xs font-bold border border-slate-200">
+                <i class="fas fa-file-csv text-green-600 text-lg"></i>
+                <span>CSV YÜKLE</span>
                 <input type="file" id="csvInput" accept=".csv" class="hidden" onchange="handleFileUpload(event)">
             </label>
         </div>
     </header>
 
-    <!-- Karekod Okuma Alanı (Sabit) -->
-    <div class="bg-white border-b border-slate-200 p-4 shrink-0 z-10">
-        <div class="max-w-4xl mx-auto">
-            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">GTIN / Karekod Okut (GS1)</label>
+    <!-- SAYFA 1: STOKLAR (ENVANTER) -->
+    <div id="view-home" class="view-section flex-1 flex flex-col overflow-hidden active-view relative">
+        <!-- Arama -->
+        <div class="p-3 bg-white shadow-sm z-10">
             <div class="relative">
-                <input type="text" id="gs1Input" 
-                    class="w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:outline-none gs1-input transition-all"
-                    placeholder="(01)GTIN...(17)SKT...(10)LOT...(21)SN..." 
-                    autocomplete="off" disabled>
-                <i class="fas fa-barcode absolute left-3 top-3.5 text-slate-400 text-lg"></i>
-                <div id="scanStatus" class="absolute right-3 top-3 text-sm font-bold text-slate-400">Hazır</div>
+                <input type="text" id="inventorySearch" onkeyup="filterInventory()" 
+                    class="w-full bg-slate-100 border-none rounded-xl py-3 pl-10 pr-4 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 transition" 
+                    placeholder="Stoklarda Ara (Kod, İsim, Raf)...">
+                <i class="fas fa-search absolute left-3 top-3.5 text-gray-400"></i>
             </div>
-            <div class="flex gap-2 mt-2 text-xs text-slate-400">
-                <span><i class="fas fa-info-circle"></i> Otomatik Parçalama:</span>
-                <span class="bg-slate-100 px-1 rounded border">01 GTIN</span>
-                <span class="bg-slate-100 px-1 rounded border">17 SKT</span>
-                <span class="bg-slate-100 px-1 rounded border">10 LOT</span>
-                <span class="bg-slate-100 px-1 rounded border">21 SN</span>
+            <!-- Özet Bar -->
+            <div class="flex gap-2 mt-2 overflow-x-auto no-scrollbar">
+                <div class="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-md border border-blue-100 whitespace-nowrap">
+                    Top: <span id="statTotal">0</span>
+                </div>
+                <div class="px-3 py-1 bg-purple-50 text-purple-700 text-xs font-bold rounded-md border border-purple-100 whitespace-nowrap">
+                    Kutu: <span id="statQty">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Liste -->
+        <div id="inventoryList" class="flex-1 overflow-y-auto p-3 space-y-2 pb-24 bg-slate-100">
+            <div id="emptyInventory" class="flex flex-col items-center justify-center h-64 text-gray-400 mt-10">
+                <i class="fas fa-warehouse text-5xl mb-4 opacity-20"></i>
+                <p class="text-sm font-medium">Stok listesi boş.</p>
+                <p class="text-xs">Lütfen sağ üstten 'Stok1.csv' yükleyin.</p>
             </div>
         </div>
     </div>
 
-    <!-- Ana Envanter Listesi -->
-    <main class="flex-1 overflow-y-auto p-4 custom-scroll relative" id="mainContainer">
-        <!-- Boş Durum -->
-        <div id="emptyState" class="flex flex-col items-center justify-center h-full text-slate-400 opacity-60">
-            <i class="fas fa-cloud-upload-alt text-6xl mb-4"></i>
-            <h2 class="text-xl font-bold">Lütfen "Stok1.csv" dosyasını yükleyin</h2>
+    <!-- SAYFA 2: SİPARİŞ OLUŞTUR (YENİ) -->
+    <div id="view-add-order" class="view-section hidden flex-1 flex flex-col overflow-hidden bg-slate-50">
+        <div class="p-4 bg-white border-b border-gray-200 shadow-sm">
+            <h2 class="text-lg font-bold text-slate-800 mb-2 flex items-center">
+                <i class="fas fa-cart-plus text-orange-500 mr-2"></i> Sipariş Ekle
+            </h2>
+            <div class="relative">
+                <input type="text" id="orderSearchInput" oninput="searchForOrder(this.value)"
+                    class="w-full border-2 border-orange-100 rounded-xl py-3 pl-10 pr-10 font-bold focus:border-orange-500 focus:outline-none transition uppercase" 
+                    placeholder="ÜRÜN KODU VEYA ADI...">
+                <i class="fas fa-search absolute left-3 top-4 text-gray-400"></i>
+                <button onclick="document.getElementById('orderSearchInput').value=''; searchForOrder('');" class="absolute right-3 top-3.5 text-gray-300 hover:text-gray-500">
+                    <i class="fas fa-times-circle"></i>
+                </button>
+            </div>
         </div>
 
-        <!-- Ürün Kartları Grid -->
-        <div id="inventoryList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 hidden max-w-7xl mx-auto pb-24">
-            <!-- JS ile dolacak -->
+        <div id="orderSearchResults" class="flex-1 overflow-y-auto p-3 space-y-2 pb-24">
+            <div class="text-center text-gray-400 mt-20 opacity-60">
+                <i class="fas fa-keyboard text-4xl mb-3"></i>
+                <p>Aramak için yazmaya başlayın...</p>
+            </div>
         </div>
-    </main>
+    </div>
 
-    <!-- Sipariş Ekleme Alanı (Açılır/Kapanır Panel) -->
-    <div id="orderPanel" class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 transform translate-y-[calc(100%-60px)] h-[80vh] flex flex-col">
+    <!-- SAYFA 3: SCANNER -->
+    <div id="view-scanner" class="view-section hidden flex-1 bg-black relative flex-col">
+        <div class="absolute top-4 left-4 right-4 z-20 flex justify-between text-white">
+            <div class="bg-black/60 px-3 py-1 rounded-full backdrop-blur-md text-sm font-mono border border-white/20">
+                <i class="fas fa-qrcode mr-2"></i>SCAN MODU
+            </div>
+            <button onclick="stopScanner()" class="bg-red-500/80 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur text-white">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div id="reader" class="w-full h-full"></div>
         
-        <!-- Panel Tutamağı (Aç/Kapa) -->
-        <div onclick="toggleOrderPanel()" class="bg-slate-50 hover:bg-slate-100 cursor-pointer p-2 flex justify-between items-center border-b border-slate-200 px-4 h-[60px] shrink-0">
-            <div class="flex items-center gap-3">
-                <div class="bg-orange-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-sm">
-                    <i class="fas fa-shopping-cart text-sm"></i>
-                </div>
-                <div>
-                    <h3 class="font-bold text-slate-800">Sipariş Oluştur</h3>
-                    <p class="text-xs text-slate-500"><span id="orderCount">0</span> Kalem Ürün</p>
-                </div>
+        <!-- Zoom Kontrol -->
+        <div class="absolute bottom-24 left-1/2 transform -translate-x-1/2 w-64 z-20">
+            <div class="bg-black/40 backdrop-blur rounded-full px-4 py-2 border border-white/10 flex items-center gap-3">
+                <i class="fas fa-search-minus text-white/70 text-xs"></i>
+                <input type="range" min="1" max="5" step="0.1" value="1" id="zoomSlider" class="w-full h-1 bg-white/30 rounded-lg appearance-none cursor-pointer">
+                <i class="fas fa-search-plus text-white/70 text-xs"></i>
             </div>
-            <div class="text-slate-400">
-                <i id="panelIcon" class="fas fa-chevron-up text-xl"></i>
+            <p class="text-center text-white/60 text-[10px] mt-2 font-medium">GTIN/Karekod Yakınlaştır</p>
+        </div>
+    </div>
+
+    <!-- SAYFA 4: SİPARİŞ MONİTÖRÜ (SEPET) -->
+    <div id="view-orders" class="view-section hidden flex-1 flex flex-col bg-white overflow-hidden">
+        <div class="bg-white p-4 border-b border-gray-200 flex justify-between items-center shadow-sm">
+            <div>
+                <h2 class="font-bold text-lg text-slate-800">Sipariş Monitörü</h2>
+                <p class="text-xs text-gray-500"><span id="cartCountHeader">0</span> Kalem Ürün Bekliyor</p>
+            </div>
+            <button onclick="exportOrders()" class="bg-green-100 hover:bg-green-200 text-green-700 px-3 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2">
+                <i class="fas fa-file-excel"></i> <span class="hidden sm:inline">Excel Al</span>
+            </button>
+        </div>
+        
+        <div id="cartList" class="flex-1 overflow-y-auto p-4 pb-24 space-y-3 bg-slate-50">
+             <div class="text-center text-gray-400 mt-20">
+                <i class="fas fa-shopping-basket text-5xl mb-4 opacity-20"></i>
+                <p>Sepetiniz boş.</p>
             </div>
         </div>
+        
+        <!-- Alt Toplam -->
+        <div class="p-4 bg-white border-t border-gray-200 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] pb-20">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-gray-500 font-medium">Toplam Sipariş Adedi:</span>
+                <span class="text-xl font-bold text-slate-800" id="totalCartQty">0</span>
+            </div>
+        </div>
+    </div>
 
-        <!-- Panel İçeriği -->
-        <div class="flex-1 flex flex-col p-4 overflow-hidden bg-white">
-            
-            <!-- Sipariş Ürün Ekleme Inputu -->
-            <div class="flex gap-2 mb-4">
-                <div class="relative flex-1">
-                    <input type="text" id="orderSearchInput" 
-                        oninput="searchForOrder(this.value)"
-                        class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none uppercase" 
-                        placeholder="Ürün Kodu Yaz (Örn: MH-013)">
-                    <i class="fas fa-search absolute left-3 top-3 text-slate-400 text-xs"></i>
-                    
-                    <!-- Autocomplete Dropdown -->
-                    <div id="autocompleteResults" class="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto hidden">
-                        <!-- Sonuçlar buraya -->
+    <!-- ALT NAVİGASYON (5 BUTONLU) -->
+    <nav class="bg-white border-t border-gray-200 fixed bottom-0 left-0 right-0 h-16 flex items-center justify-between px-2 z-50 shadow-lg text-xs pb-safe">
+        
+        <button onclick="switchView('view-home')" class="nav-item active flex-1 flex flex-col items-center justify-center h-full text-gray-400 transition-all" data-target="view-home">
+            <i class="fas fa-boxes text-lg mb-1"></i>
+            <span class="nav-label">Stoklar</span>
+        </button>
+
+        <button onclick="switchView('view-add-order')" class="nav-item flex-1 flex flex-col items-center justify-center h-full text-gray-400 transition-all" data-target="view-add-order">
+            <i class="fas fa-cart-plus text-lg mb-1"></i>
+            <span class="nav-label">Sipariş Ekle</span>
+        </button>
+
+        <!-- QR BUTONU (ORTA) -->
+        <div class="relative -top-5">
+            <button onclick="startScanner()" class="w-14 h-14 bg-indigo-600 rounded-full shadow-xl shadow-indigo-300 flex items-center justify-center text-white border-4 border-slate-100 transform transition active:scale-95">
+                <i class="fas fa-qrcode text-xl"></i>
+            </button>
+        </div>
+
+        <button onclick="switchView('view-orders')" class="nav-item flex-1 flex flex-col items-center justify-center h-full text-gray-400 transition-all relative" data-target="view-orders">
+            <i class="fas fa-clipboard-list text-lg mb-1"></i>
+            <span class="absolute top-2 right-3 w-2 h-2 bg-red-500 rounded-full hidden" id="cartDot"></span>
+            <span class="nav-label">Monitör</span>
+        </button>
+        
+        <!-- Boş Buton (Denge İçin veya Ayarlar Gelebilir) -->
+        <button onclick="alert('Ayarlar yakında eklenecek.')" class="nav-item flex-1 flex flex-col items-center justify-center h-full text-gray-400 transition-all">
+            <i class="fas fa-cog text-lg mb-1"></i>
+            <span class="nav-label">Ayarlar</span>
+        </button>
+    </nav>
+
+    <!-- MODAL: ÜRÜN DETAY (STOK SAYFASI İÇİN) -->
+    <div id="productModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-[60] backdrop-blur-sm px-4">
+        <div class="bg-white w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl animate-[fadeIn_0.2s_ease-out]">
+            <div class="bg-indigo-600 p-4 text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg">Ürün Kartı</h3>
+                <button onclick="closeModal()" class="w-8 h-8 flex items-center justify-center bg-white/20 rounded-full hover:bg-white/30"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-5">
+                <div class="mb-4 text-center">
+                    <span id="mCode" class="text-xs font-bold bg-gray-100 px-2 py-1 rounded text-gray-600">---</span>
+                    <h2 id="mName" class="font-bold text-gray-800 text-lg mt-2 leading-snug">---</h2>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+                        <span class="text-[10px] text-gray-400 uppercase font-bold block">LOT NO</span>
+                        <span id="mLot" class="font-mono font-bold text-slate-700 text-lg">---</span>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+                        <span class="text-[10px] text-gray-400 uppercase font-bold block">RAF ADRESİ</span>
+                        <span id="mLoc" class="font-bold text-indigo-600 text-sm">---</span>
                     </div>
                 </div>
-            </div>
 
-            <!-- Sipariş Tablosu -->
-            <div class="flex-1 overflow-y-auto border border-slate-200 rounded-lg">
-                <table class="w-full text-sm text-left text-slate-600">
-                    <thead class="text-xs text-slate-700 uppercase bg-slate-50 sticky top-0">
-                        <tr>
-                            <th class="px-4 py-3">Kod</th>
-                            <th class="px-4 py-3">Ürün Adı</th>
-                            <th class="px-4 py-3 text-center">Adet</th>
-                            <th class="px-4 py-3 text-right">İşlem</th>
-                        </tr>
-                    </thead>
-                    <tbody id="orderTableBody">
-                        <!-- Sipariş satırları -->
-                    </tbody>
-                </table>
-                <div id="emptyOrder" class="text-center py-8 text-slate-400">
-                    <p>Henüz sipariş eklenmedi.</p>
+                <div class="bg-yellow-50 p-3 rounded-xl border border-yellow-100 mb-4 flex justify-between items-center">
+                    <span class="text-yellow-700 font-bold text-xs uppercase">Sistem Stoğu</span>
+                    <span id="mQty" class="text-2xl font-bold text-yellow-800">0</span>
                 </div>
-            </div>
 
-            <!-- Sipariş Aksiyonları -->
-            <div class="mt-4 flex gap-3 shrink-0">
-                <button onclick="clearOrder()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium text-sm">Temizle</button>
-                <button onclick="exportOrder()" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white py-2 rounded-lg font-bold shadow-md flex justify-center items-center gap-2">
-                    <i class="fas fa-paper-plane"></i> Siparişi Tamamla (Excel)
+                <button onclick="printLabelCurrentItem()" class="w-full bg-slate-800 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-slate-900 active:scale-95 transition flex items-center justify-center gap-2">
+                    <i class="fas fa-print"></i> RAF ETİKETİ YAZDIR
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Bildirim -->
-    <div id="toast" class="fixed top-20 right-4 bg-slate-800 text-white px-4 py-3 rounded shadow-lg transform translate-x-full transition-transform duration-300 z-50 flex items-center gap-3">
-        <div id="toastIcon"></div>
-        <div id="toastMsg">Bildirim</div>
-    </div>
+    <!-- YAZDIRMA ALANI -->
+    <div id="printArea"></div>
 
     <script>
-        // --- Durum Yönetimi ---
-        let inventory = []; // CSV Verisi
-        let orderList = []; // Sipariş Listesi
-        let isPanelOpen = false;
-
-        // --- CSV İşlemleri ---
+        // --- DATA ---
+        let inventory = [];
+        let cart = [];
+        let html5QrCode;
+        let currentItem = null; // Modal için
+        
+        // --- CSV PARSER (GÜÇLENDİRİLMİŞ) ---
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
 
+            document.getElementById('headerStatus').innerText = "Dosya Okunuyor...";
+            
             const reader = new FileReader();
             reader.onload = function(e) {
-                parseCSV(e.target.result);
+                const text = e.target.result;
+                parseCSV(text);
             };
-            reader.readAsText(file, 'ISO-8859-9'); // Türkçe karakter desteği
+            reader.readAsText(file, 'ISO-8859-9'); // Türkçe Karakter Desteği
         }
 
-        function parseCSV(csvText) {
-            const lines = csvText.split(/\r\n|\n/);
+        function parseCSV(text) {
+            const lines = text.split(/\r\n|\n/);
             inventory = [];
-
-            // Başlık satırını atla, veriyi işle
+            
+            // Başlık satırını atla (i=1)
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (!line) continue;
 
+                // Noktalı virgül ile ayır
                 const cols = line.split(';');
-                if (cols.length < 5) continue;
-
-                // Stok1.csv Yapısı: KOD; İSİM; MİKTAR; SKT; LOT; ADRES
-                inventory.push({
-                    id: i,
-                    code: cols[0] || '',
-                    name: cols[1] || '',
-                    qty: parseInt(cols[2]) || 0,
-                    expiry: cols[3] || '',
-                    lot: cols[4] || '', // LOT Kritik Eşleşme Alanı
-                    location: cols[5] || '',
-                    status: 'pending', // pending | verified
-                    scannedData: null // Okutulan SN, GTIN bilgisi buraya
-                });
+                
+                // Güvenli veri çekme
+                if (cols.length >= 5) {
+                    inventory.push({
+                        id: i,
+                        code: cols[0].trim(),           // Stok Kodu
+                        name: cols[1].trim(),           // İsim
+                        qty: parseInt(cols[2]) || 0,    // Miktar
+                        expiry: cols[3].trim(),         // SKT
+                        lot: cols[4].trim(),            // LOT
+                        loc: cols[5] ? cols[5].trim() : 'Tanımsız' // Depo Adres
+                    });
+                }
             }
 
             // UI Güncelle
-            document.getElementById('fileStatus').innerText = `${inventory.length} ürün yüklendi.`;
-            document.getElementById('emptyState').classList.add('hidden');
-            document.getElementById('inventoryList').classList.remove('hidden');
-            document.getElementById('gs1Input').disabled = false;
-            document.getElementById('gs1Input').focus();
+            document.getElementById('headerStatus').innerText = `${inventory.length} Ürün Yüklendi`;
             
-            renderInventory();
-        }
-
-        // --- GS1 Karekod Ayrıştırıcı (Parser) ---
-        // Bu fonksiyon GTIN(01), Expiry(17), Lot(10), SN(21) ayıklar.
-        function parseGS1(rawString) {
-            let data = { gtin: '', expiry: '', lot: '', sn: '' };
-            let str = rawString.trim();
-
-            // Parantezleri temizle (bazı okuyucular (01) şeklinde okur)
-            // Amaç ham veriyi temiz bir stringe veya kurallı yapıya çevirmek
-            
-            // Basit Regex Yaklaşımı (Karekod içeriğine göre değişebilir, en yaygın formata göre):
-            // 01(14 hane) + 17(6 hane) + 10(Değişken) + 21(Değişken)
-            
-            // 1. GTIN (01) Bulma
-            let gtinMatch = str.match(/01(\d{14})/);
-            if (!gtinMatch) gtinMatch = str.match(/\(01\)(\d{14})/);
-            if (gtinMatch) {
-                data.gtin = gtinMatch[1];
-                // Stringi kısalt
-                // str = str.replace(gtinMatch[0], ''); // Kısaltma riskli olabilir, index üzerinden gidelim
-            }
-
-            // 2. LOT (10) Bulma - Kritik Eşleşme Noktası
-            // Genelde 10 dan sonra Group Separator (GS) gelir veya string biter veya 17/21 başlar.
-            // Basitçe (10)LOT123(17) veya 10LOT12317...
-            
-            // Regex: 10 ile başla, sonra alfanümerik al, sonra (21|17|11|30) gibi diğer AI'lara kadar dur.
-            // Bu kısım complex, basitleştirelim:
-            // Birçok barkod okuyucu parantezli gönderir: (01)...(10)...
-            
-            const aiRegex = /\((\d{2,4})\)([^(]+)/g;
-            let match;
-            let foundAI = false;
-
-            while ((match = aiRegex.exec(str)) !== null) {
-                foundAI = true;
-                const ai = match[1];
-                const val = match[2];
-                if (ai === '01') data.gtin = val;
-                if (ai === '10') data.lot = val;
-                if (ai === '17') data.expiry = val; // YYMMDD
-                if (ai === '21') data.sn = val;
-            }
-
-            // Eğer parantezsiz geliyorsa (GS1-128 raw format)
-            if (!foundAI && str.length > 14) {
-                // Manuel Parsing (Varsayım: 01 ve 17 sabit uzunluktadır)
-                // Örn: 01999999999999991725010110LOTXYZ
-                let idx = str.indexOf('01');
-                if (idx !== -1) {
-                    data.gtin = str.substr(idx + 2, 14);
-                }
-                
-                // 17 (SKT) genellikle GTIN den sonra gelir veya bağımsızdır
-                let idx17 = str.indexOf('17', idx + 16); 
-                if (idx17 !== -1 && idx17 < idx + 20) { // GTIN'den hemen sonra ise
-                     data.expiry = str.substr(idx17 + 2, 6);
-                }
-
-                // 10 (LOT)
-                let idx10 = str.indexOf('10');
-                // Bu çok riskli çünkü "10" rakamı GTIN içinde de olabilir.
-                // En güvenlisi LOT eşleşmesini inventory'den aramak.
-                
-                // --- ALTERNATİF YAKLAŞIM: STRİNG İÇİNDE CSV'DEKİ LOT'U ARA ---
-                // Eğer tam parse edemiyorsak, okutulan string içinde inventory'deki LOT var mı diye bakarız.
-            }
-
-            return data;
-        }
-
-        // --- Input Dinleyicisi ---
-        const gs1Input = document.getElementById('gs1Input');
-        gs1Input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                const rawVal = gs1Input.value;
-                if (rawVal.length > 3) {
-                    processScan(rawVal);
-                }
-                gs1Input.value = ''; // Temizle
-            }
-        });
-
-        function processScan(rawVal) {
-            // 1. Önce kaba kuvvet ile LOT eşleşmesi ara (Parsing hatasına karşı en güvenlisi)
-            // Stringin içinde Inventory'deki herhangi bir LOT geçiyor mu?
-            
-            let foundItem = null;
-            
-            // Strateji: Önce ham string parse edilmeye çalışılır
-            let parsed = parseGS1(rawVal);
-            
-            // Eğer parser LOT bulduysa o LOT'u ara
-            if (parsed.lot) {
-                foundItem = inventory.find(i => i.lot === parsed.lot);
-            } 
-            
-            // Parser bulamadıysa veya eşleşmediyse, Raw String içinde LOT ara (Contains)
-            if (!foundItem) {
-                foundItem = inventory.find(i => rawVal.includes(i.lot) && i.lot.length > 2);
-            }
-
-            // --- SONUÇ ---
-            if (foundItem) {
-                // Eşleşme Başarılı
-                foundItem.status = 'verified';
-                foundItem.scannedData = {
-                    raw: rawVal,
-                    gtin: parsed.gtin || 'Bilinmiyor',
-                    sn: parsed.sn || 'Bilinmiyor',
-                    timestamp: new Date().toLocaleTimeString()
-                };
-
-                // UI Güncelle
-                updateRowUI(foundItem.id);
-                showToast(`Doğrulandı: ${foundItem.name}`, 'success');
-                playSound('success');
+            if(inventory.length > 0) {
+                document.getElementById('emptyInventory').classList.add('hidden');
+                updateStats();
+                renderInventoryList(inventory.slice(0, 100)); // İlk 100 taneyi göster (performans)
             } else {
-                // Eşleşme Yok
-                showToast('HATA: Ürün/LOT CSV dosyasında bulunamadı!', 'error');
-                playSound('error');
+                alert("CSV dosyasında veri bulunamadı veya format hatalı.");
             }
         }
 
-        function updateRowUI(id) {
-            const el = document.getElementById(`card-${id}`);
-            if (el) {
-                el.classList.remove('row-pending');
-                el.classList.add('row-verified');
-                el.classList.add('scale-105'); // Efekt
-                setTimeout(() => el.classList.remove('scale-105'), 300);
-                
-                // Verified iconu göster
-                const icon = el.querySelector('.status-icon');
-                icon.innerHTML = '<i class="fas fa-check-circle text-green-600 text-2xl"></i>';
-                
-                // Otomatik scroll (opsiyonel)
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
-
-        // --- Arayüz Render ---
-        function renderInventory() {
+        // --- STOKLAR SEKMESİ (RENDER) ---
+        function renderInventoryList(list) {
             const container = document.getElementById('inventoryList');
             container.innerHTML = '';
-
-            inventory.forEach(item => {
-                const isVerified = item.status === 'verified';
-                const statusClass = isVerified ? 'row-verified' : 'row-pending';
-                
-                const card = document.createElement('div');
-                card.id = `card-${item.id}`;
-                card.className = `p-4 rounded-lg shadow-sm border border-slate-200 transition-all duration-300 ${statusClass}`;
-                
-                card.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="bg-slate-700 text-white text-xs font-bold px-2 py-1 rounded">${item.code}</span>
-                            <h3 class="font-bold text-slate-800 mt-2">${item.name}</h3>
-                        </div>
-                        <div class="status-icon">
-                            ${isVerified 
-                                ? '<i class="fas fa-check-circle text-green-600 text-2xl"></i>' 
-                                : '<i class="far fa-circle text-slate-300 text-2xl"></i>'}
-                        </div>
-                    </div>
-                    
-                    <div class="mt-3 grid grid-cols-2 gap-2 text-sm text-slate-600">
-                        <div class="bg-slate-50 p-1 rounded px-2 border border-slate-100">
-                            <span class="text-xs text-slate-400 block">LOT</span>
-                            <span class="font-mono font-bold">${item.lot}</span>
-                        </div>
-                        <div class="bg-slate-50 p-1 rounded px-2 border border-slate-100">
-                            <span class="text-xs text-slate-400 block">SKT</span>
-                            <span>${item.expiry}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-2 text-xs text-slate-400 flex justify-between items-center">
-                        <span><i class="fas fa-map-marker-alt"></i> ${item.location}</span>
-                        <span class="font-bold text-slate-600">${item.qty} Adet</span>
-                    </div>
-                    
-                    ${isVerified && item.scannedData.sn !== '' ? 
-                        `<div class="mt-2 pt-2 border-t border-green-200 text-xs text-green-700 font-mono">
-                            SN: ${item.scannedData.sn}
-                         </div>` : ''}
-                `;
-                container.appendChild(card);
-            });
-        }
-
-        // --- Sipariş (Sepet) İşlemleri ---
-        function toggleOrderPanel() {
-            const panel = document.getElementById('orderPanel');
-            const icon = document.getElementById('panelIcon');
             
-            if (isPanelOpen) {
-                // Kapat
-                panel.style.transform = 'translateY(calc(100% - 60px))';
-                icon.classList.remove('fa-chevron-down');
-                icon.classList.add('fa-chevron-up');
-                document.getElementById('gs1Input').focus(); // Focusu geri al
-            } else {
-                // Aç
-                panel.style.transform = 'translateY(0)';
-                icon.classList.remove('fa-chevron-up');
-                icon.classList.add('fa-chevron-down');
-                setTimeout(() => document.getElementById('orderSearchInput').focus(), 300);
-            }
-            isPanelOpen = !isPanelOpen;
-        }
-
-        // Sipariş Arama
-        function searchForOrder(val) {
-            const resultsDiv = document.getElementById('autocompleteResults');
-            if (val.length < 2) {
-                resultsDiv.classList.add('hidden');
+            if(list.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-400 mt-10">Sonuç yok.</div>';
                 return;
             }
 
-            const matches = inventory.filter(i => 
-                i.code.toLowerCase().includes(val.toLowerCase()) || 
-                i.name.toLowerCase().includes(val.toLowerCase())
-            ).slice(0, 5); // İlk 5 sonuç
+            list.forEach(item => {
+                // Adres formatlama (Pipe | karakterini daha şık göster)
+                const locDisplay = item.loc.replace(/\|/g, '<span class="text-gray-300 mx-1">/</span>');
 
-            resultsDiv.innerHTML = '';
-            
-            if (matches.length > 0) {
-                matches.forEach(m => {
-                    const div = document.createElement('div');
-                    div.className = "p-2 hover:bg-orange-50 cursor-pointer border-b border-slate-100";
-                    div.innerHTML = `<span class="font-bold text-slate-700">${m.code}</span> - ${m.name} <span class="text-xs text-slate-400">(${m.qty} Mevcut)</span>`;
-                    div.onclick = () => addToOrder(m);
-                    resultsDiv.appendChild(div);
-                });
-                resultsDiv.classList.remove('hidden');
-            } else {
-                resultsDiv.classList.add('hidden');
-            }
-        }
-
-        function addToOrder(item) {
-            // Listede var mı kontrol et
-            const existing = orderList.find(o => o.code === item.code);
-            
-            if (existing) {
-                existing.orderQty++;
-            } else {
-                orderList.push({
-                    code: item.code,
-                    name: item.name,
-                    lot: item.lot,
-                    orderQty: 1
-                });
-            }
-
-            renderOrderList();
-            document.getElementById('orderSearchInput').value = '';
-            document.getElementById('autocompleteResults').classList.add('hidden');
-            document.getElementById('orderSearchInput').focus();
-        }
-
-        function renderOrderList() {
-            const tbody = document.getElementById('orderTableBody');
-            tbody.innerHTML = '';
-            
-            orderList.forEach((item, index) => {
-                const tr = document.createElement('tr');
-                tr.className = "border-b border-slate-100 hover:bg-slate-50";
-                tr.innerHTML = `
-                    <td class="px-4 py-3 font-medium text-slate-800">${item.code}</td>
-                    <td class="px-4 py-3 truncate max-w-[150px]">${item.name}</td>
-                    <td class="px-4 py-3 text-center">
-                        <div class="flex items-center justify-center gap-1">
-                            <button onclick="changeOrderQty(${index}, -1)" class="w-6 h-6 bg-slate-200 rounded text-slate-600 font-bold hover:bg-slate-300">-</button>
-                            <span class="w-8 text-center font-bold">${item.orderQty}</span>
-                            <button onclick="changeOrderQty(${index}, 1)" class="w-6 h-6 bg-slate-200 rounded text-slate-600 font-bold hover:bg-slate-300">+</button>
+                const div = document.createElement('div');
+                div.className = "bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-1 active:bg-gray-50 transition cursor-pointer";
+                div.onclick = () => openModal(item.id);
+                div.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <span class="text-[10px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200">${item.code}</span>
+                        <span class="text-[10px] font-mono font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">${item.lot}</span>
+                    </div>
+                    <h3 class="font-bold text-sm text-slate-800 leading-tight line-clamp-2">${item.name}</h3>
+                    <div class="flex justify-between items-end mt-1 border-t border-slate-50 pt-1">
+                        <div class="text-xs text-gray-500 flex items-center">
+                            <i class="fas fa-map-marker-alt mr-1 text-orange-400"></i> ${locDisplay}
                         </div>
-                    </td>
-                    <td class="px-4 py-3 text-right">
-                        <button onclick="removeOrderLine(${index})" class="text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
-                    </td>
+                        <div class="text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full">
+                            ${item.qty} Adet
+                        </div>
+                    </div>
                 `;
-                tbody.appendChild(tr);
+                container.appendChild(div);
             });
-
-            document.getElementById('orderCount').innerText = orderList.length;
-            
-            if(orderList.length > 0) document.getElementById('emptyOrder').classList.add('hidden');
-            else document.getElementById('emptyOrder').classList.remove('hidden');
         }
 
-        function changeOrderQty(index, delta) {
-            if (orderList[index].orderQty + delta > 0) {
-                orderList[index].orderQty += delta;
-                renderOrderList();
+        // --- FİLTRELEME ---
+        function filterInventory() {
+            const term = document.getElementById('inventorySearch').value.toLowerCase();
+            const filtered = inventory.filter(i => 
+                i.code.toLowerCase().includes(term) || 
+                i.name.toLowerCase().includes(term) ||
+                i.lot.toLowerCase().includes(term) ||
+                i.loc.toLowerCase().includes(term)
+            );
+            // Performans için max 50 sonuç göster
+            renderInventoryList(filtered.slice(0, 50));
+        }
+
+        // --- SİPARİŞ EKLEME (YENİ SEKME) ---
+        function searchForOrder(val) {
+            const container = document.getElementById('orderSearchResults');
+            container.innerHTML = '';
+            
+            if(val.length < 2) {
+                container.innerHTML = `<div class="text-center text-gray-400 mt-20 opacity-60"><i class="fas fa-keyboard text-4xl mb-3"></i><p>Aramak için yazın...</p></div>`;
+                return;
+            }
+
+            const term = val.toLowerCase();
+            const results = inventory.filter(i => 
+                i.code.toLowerCase().includes(term) || 
+                i.name.toLowerCase().includes(term)
+            ).slice(0, 30); // Max 30 sonuç
+
+            if(results.length === 0) {
+                container.innerHTML = `<div class="text-center text-gray-400 mt-10">Ürün bulunamadı.</div>`;
+                return;
+            }
+
+            results.forEach(item => {
+                const el = document.createElement('div');
+                el.className = "bg-white p-3 rounded-xl border border-orange-100 shadow-sm flex flex-col gap-2";
+                el.innerHTML = `
+                    <div class="flex justify-between">
+                        <span class="font-bold text-xs text-slate-500">${item.code}</span>
+                        <span class="font-bold text-xs text-slate-400">Stok: ${item.qty}</span>
+                    </div>
+                    <div class="font-bold text-slate-800 text-sm">${item.name}</div>
+                    <div class="text-xs text-slate-400 font-mono">LOT: ${item.lot}</div>
+                    
+                    <div class="flex gap-2 mt-1">
+                        <input type="number" id="qty-${item.id}" class="w-16 border border-gray-300 rounded-lg text-center font-bold" value="1" min="1">
+                        <button onclick="addToCart(${item.id})" class="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 rounded-lg text-sm shadow-md active:scale-95 transition">
+                            <i class="fas fa-plus"></i> Sepete Ekle
+                        </button>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function addToCart(id) {
+            const qtyInput = document.getElementById(`qty-${id}`);
+            const qty = parseInt(qtyInput.value) || 1;
+            const item = inventory.find(i => i.id === id);
+
+            if(item) {
+                const existing = cart.find(c => c.id === id);
+                if(existing) {
+                    existing.orderQty += qty;
+                } else {
+                    cart.push({ ...item, orderQty: qty, status: 'Bekliyor' });
+                }
+                
+                // Görsel Bildirim
+                const btn = qtyInput.nextElementSibling;
+                const orgHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i> Eklendi';
+                btn.className = "flex-1 bg-green-500 text-white font-bold py-2 rounded-lg text-sm shadow-md transition";
+                setTimeout(() => {
+                    btn.innerHTML = orgHtml;
+                    btn.className = "flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 rounded-lg text-sm shadow-md active:scale-95 transition";
+                }, 1000);
+
+                updateCartUI();
             }
         }
 
-        function removeOrderLine(index) {
-            orderList.splice(index, 1);
-            renderOrderList();
+        // --- SİPARİŞ MONİTÖRÜ ---
+        function updateCartUI() {
+            // Header Badge
+            const count = cart.length;
+            document.getElementById('cartCountHeader').innerText = count;
+            
+            const dot = document.getElementById('cartDot');
+            if(count > 0) dot.classList.remove('hidden');
+            else dot.classList.add('hidden');
+
+            // Render List
+            const container = document.getElementById('cartList');
+            container.innerHTML = '';
+            let totalQ = 0;
+
+            if(count === 0) {
+                container.innerHTML = `<div class="text-center text-gray-400 mt-20"><i class="fas fa-shopping-basket text-5xl mb-4 opacity-20"></i><p>Sepet boş.</p></div>`;
+            } else {
+                cart.forEach((item, index) => {
+                    totalQ += item.orderQty;
+                    const el = document.createElement('div');
+                    el.className = "bg-white p-3 rounded-xl border border-gray-200 shadow-sm relative";
+                    el.innerHTML = `
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-bold text-sm text-slate-800 pr-8">${item.name}</h4>
+                            <button onclick="removeFromCart(${index})" class="text-red-400 hover:text-red-600 absolute right-3 top-3"><i class="fas fa-trash"></i></button>
+                        </div>
+                        <div class="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
+                            <div class="text-xs text-gray-500">
+                                <div>${item.code}</div>
+                                <div class="font-mono">LOT: ${item.lot}</div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-gray-400">Adet:</span>
+                                <span class="text-lg font-bold text-indigo-600">${item.orderQty}</span>
+                            </div>
+                        </div>
+                        <div class="mt-2 flex gap-2">
+                             <select onchange="cart[${index}].status = this.value" class="bg-white border border-gray-200 text-xs rounded px-2 py-1 font-bold text-gray-600 flex-1">
+                                <option value="Bekliyor">Bekliyor</option>
+                                <option value="Hazırlandı">Hazırlandı</option>
+                                <option value="Sevk">Sevk Edildi</option>
+                             </select>
+                             <button onclick="printLabelForItem(${item.id})" class="bg-slate-700 text-white text-xs px-3 py-1 rounded font-bold hover:bg-slate-800">
+                                <i class="fas fa-print"></i>
+                             </button>
+                        </div>
+                    `;
+                    container.appendChild(el);
+                });
+            }
+            document.getElementById('totalCartQty').innerText = totalQ;
         }
 
-        function clearOrder() {
-            if(confirm('Sipariş listesi temizlensin mi?')) {
-                orderList = [];
-                renderOrderList();
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            updateCartUI();
+        }
+
+        // --- SCANNER ---
+        async function startScanner() {
+            switchView('view-scanner');
+            html5QrCode = new Html5Qrcode("reader");
+            
+            try {
+                await html5QrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    (decodedText) => {
+                        // Scan Success
+                        // LOT Bulma Mantığı (Basitçe Text içinde Inventory'deki Lot var mı)
+                        const found = inventory.find(i => decodedText.includes(i.lot) && i.lot.length > 3);
+                        
+                        if(found) {
+                            stopScanner();
+                            openModal(found.id);
+                            // Ses çalınabilir
+                        } else {
+                            // Sadece bilgi ver, durdurma
+                            // alert("Eşleşen ürün bulunamadı!");
+                        }
+                    }
+                );
+                
+                // Zoom
+                setTimeout(() => {
+                   const slider = document.getElementById('zoomSlider');
+                   slider.oninput = () => {
+                       html5QrCode.applyVideoConstraints({ advanced: [{ zoom: parseFloat(slider.value) }] });
+                   };
+                }, 1000);
+
+            } catch (e) {
+                console.error(e);
+                alert("Kamera hatası. İzinleri kontrol edin.");
+                stopScanner();
             }
         }
 
-        function exportOrder() {
-            if (orderList.length === 0) return alert('Liste boş');
-            
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-            csvContent += "Stok Kodu;Urun Adi;LOT;Siparis Adedi\n";
-            
-            orderList.forEach(row => {
-                csvContent += `${row.code};${row.name};${row.lot};${row.orderQty}\n`;
-            });
+        function stopScanner() {
+            if(html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                    switchView('view-home');
+                });
+            } else {
+                switchView('view-home');
+            }
+        }
 
-            const encodedUri = encodeURI(csvContent);
+        // --- MODAL & ETİKET ---
+        function openModal(id) {
+            currentItem = inventory.find(i => i.id === id);
+            if(!currentItem) return;
+
+            document.getElementById('mCode').innerText = currentItem.code;
+            document.getElementById('mName').innerText = currentItem.name;
+            document.getElementById('mLot').innerText = currentItem.lot;
+            document.getElementById('mLoc').innerText = currentItem.loc;
+            document.getElementById('mQty').innerText = currentItem.qty;
+
+            const modal = document.getElementById('productModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeModal() {
+            document.getElementById('productModal').classList.add('hidden');
+            document.getElementById('productModal').classList.remove('flex');
+        }
+
+        function printLabelCurrentItem() {
+            if(currentItem) printLabel(currentItem);
+        }
+        
+        function printLabelForItem(id) {
+            const item = inventory.find(i => i.id === id);
+            if(item) printLabel(item);
+        }
+
+        function printLabel(item) {
+            const area = document.getElementById('printArea');
+            // 50x30mm Etiket Tasarımı
+            area.innerHTML = `
+                <div style="width: 300px; padding: 10px; border: 1px dashed black; font-family: Arial;">
+                    <h2 style="margin: 0; font-size: 16px;">${item.name.substring(0,25)}</h2>
+                    <p style="margin: 5px 0;"><strong>KOD:</strong> ${item.code}</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <p style="margin: 2px 0; font-size: 12px;">LOT: ${item.lot}</p>
+                            <p style="margin: 2px 0; font-size: 12px;">SKT: ${item.expiry}</p>
+                        </div>
+                        <canvas id="lblBarcode"></canvas>
+                    </div>
+                    <div style="font-size: 10px; text-align: center; margin-top: 5px;">${item.loc}</div>
+                </div>
+            `;
+
+            // Barkod Oluştur
+            try {
+                bwipjs.toCanvas('lblBarcode', {
+                    bcid: 'datamatrix',
+                    text: `(01)00000000000000(10)${item.lot}(17)000000`,
+                    scale: 3,
+                    height: 20,
+                    includetext: false
+                });
+            } catch(e) {}
+
+            setTimeout(() => window.print(), 500);
+        }
+
+        // --- YARDIMCILAR ---
+        function updateStats() {
+            document.getElementById('statTotal').innerText = inventory.length;
+            const totalQty = inventory.reduce((a, b) => a + b.qty, 0);
+            document.getElementById('statQty').innerText = totalQty;
+        }
+
+        function exportOrders() {
+            if(cart.length === 0) return alert("Sepet boş.");
+            let csv = "data:text/csv;charset=utf-8,\uFEFFKod;Urun;LOT;Adet;Durum\n";
+            cart.forEach(c => {
+                csv += `${c.code};${c.name};${c.lot};${c.orderQty};${c.status}\n`;
+            });
             const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `Siparis_Listesi_${new Date().toISOString().slice(0,10)}.csv`);
+            link.href = encodeURI(csv);
+            link.download = "Siparis_Listesi.csv";
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         }
 
-        // --- Yardımcılar ---
-        function showToast(msg, type) {
-            const toast = document.getElementById('toast');
-            const icon = document.getElementById('toastIcon');
-            const text = document.getElementById('toastMsg');
-            
-            text.innerText = msg;
-            
-            if (type === 'success') {
-                toast.className = "fixed top-20 right-4 bg-green-600 text-white px-4 py-3 rounded shadow-lg transform transition-transform duration-300 z-50 flex items-center gap-3";
-                icon.innerHTML = '<i class="fas fa-check-circle"></i>';
-            } else {
-                toast.className = "fixed top-20 right-4 bg-red-600 text-white px-4 py-3 rounded shadow-lg transform transition-transform duration-300 z-50 flex items-center gap-3";
-                icon.innerHTML = '<i class="fas fa-exclamation-circle"></i>';
+        function switchView(viewId) {
+            if(viewId !== 'view-scanner' && html5QrCode && html5QrCode.isScanning) {
+                stopScanner(); // Bu fonksiyon view'i değiştirecek zaten
+                return; 
             }
 
-            toast.classList.remove('translate-x-full');
-            setTimeout(() => {
-                toast.classList.add('translate-x-full');
-            }, 3000);
-        }
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(viewId).classList.remove('hidden');
 
-        // Ses Efekti (Opsiyonel)
-        function playSound(type) {
-            // Basit bip sesleri eklenebilir
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            const nav = document.querySelector(`.nav-item[data-target="${viewId}"]`);
+            if(nav) nav.classList.add('active');
         }
-
     </script>
 </body>
 </html>
